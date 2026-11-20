@@ -1,13 +1,13 @@
 /**
  * Motor Principal y Game Loop a 60 FPS - TrigoHeads: Soccer League
- * Incluye: Pausa circular (Continuar/Salir), Estadísticas de Partido (Atrás/Siguiente),
- * Menú Arcade, Super Tiros Matemáticos y CPU Euclidiana.
+ * Marcador visible solo durante el partido/pausa y oculto en menús/estadísticas.
  */
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // Referencias UI Marcador y Energía
+const uiScoreboard = document.querySelector(".scoreboard");
 const uiScore1 = document.getElementById("score1");
 const uiScore2 = document.getElementById("score2");
 const uiBadge1 = document.getElementById("badge1");
@@ -116,7 +116,6 @@ let particulasConfeti = [];
 let ultimoSegundo = performance.now();
 let cooldownSonidoGolpe = 0;
 
-// Estadísticas acumuladas del partido actual
 const statsPartido = {
     toques1: 0,
     toques2: 0,
@@ -130,6 +129,11 @@ const statsPartido = {
 
 const VEL_MAXIMA_BALON = 17.5;
 
+function actualizarVisibilidadMarcador() {
+    const enPartido = MATRIZ_MARCADOR[3] === 0 || MATRIZ_MARCADOR[3] === 3;
+    uiScoreboard.classList.toggle("hidden", !enPartido);
+}
+
 // --- NAVEGACIÓN ENTRE PANTALLAS ---
 function mostrarPantalla(pantallaElemento) {
     [screenStart, screenTeams, screenPitch, screenStats].forEach((s) => s.classList.remove("active"));
@@ -137,12 +141,12 @@ function mostrarPantalla(pantallaElemento) {
 }
 
 function abrirModalPausa() {
-    // Solo se puede pausar si el partido está en juego (estado 0)
     if (MATRIZ_MARCADOR[3] === 0 && mensajeGolTimer === 0) {
-        MATRIZ_MARCADOR[3] = 3; // Estado 3 = pausado
+        MATRIZ_MARCADOR[3] = 3;
         pauseModal.classList.remove("hidden");
         uiStatus.textContent = "PAUSADO";
         uiStatus.style.color = "#facc15";
+        actualizarVisibilidadMarcador();
     }
 }
 
@@ -153,12 +157,14 @@ function continuarPartido() {
         ultimoSegundo = performance.now();
         uiStatus.textContent = MATRIZ_MARCADOR[4] === 1 ? "⚡ ¡GOL DE ORO! ⚡" : "EN JUEGO";
         uiStatus.style.color = MATRIZ_MARCADOR[4] === 1 ? "#facc15" : "#4ade80";
+        actualizarVisibilidadMarcador();
     }
 }
 
 function salirYMostrarEstadisticas() {
     pauseModal.classList.add("hidden");
-    MATRIZ_MARCADOR[3] = 1; // Finalizado / Resumen
+    MATRIZ_MARCADOR[3] = 1;
+    actualizarVisibilidadMarcador();
     if (audioActivo) AudioEngine.sonarSilbato(true);
 
     const eq1 = CATALOGO_EQUIPOS[jugador1.equipoKey];
@@ -195,9 +201,9 @@ pauseMatchBtn.addEventListener("click", () => {
 btnResumeMatch.addEventListener("click", continuarPartido);
 btnQuitToStats.addEventListener("click", salirYMostrarEstadisticas);
 
-// Botones de la pantalla de estadísticas: ATRÁS -> Menú Principal | SIGUIENTE -> Nuevo Partido
 statsBackToMenuBtn.addEventListener("click", () => {
     MATRIZ_MARCADOR[3] = 2;
+    actualizarVisibilidadMarcador();
     uiStatus.textContent = "MENÚ";
     uiStatus.style.color = "#38bdf8";
     mostrarPantalla(screenStart);
@@ -249,6 +255,7 @@ btnQuickMatch.addEventListener("click", () => {
 openMenuBtn.addEventListener("click", () => {
     pauseModal.classList.add("hidden");
     MATRIZ_MARCADOR[3] = 2;
+    actualizarVisibilidadMarcador();
     setupOverlay.classList.remove("hidden");
     mostrarPantalla(screenStart);
     uiStatus.textContent = "MENÚ";
@@ -395,6 +402,7 @@ function reiniciarPartidoCompleto() {
     ultimoSegundo = performance.now();
     actualizarRelojUI();
     actualizarBarrasEnergiaUI();
+    actualizarVisibilidadMarcador();
     if (audioActivo) AudioEngine.sonarSilbato(false);
 }
 
@@ -500,7 +508,6 @@ function actualizar() {
     if (cameraShake > 0) cameraShake--;
     if (cooldownSonidoGolpe > 0) cooldownSonidoGolpe--;
 
-    // Solo actualiza la física cuando el estado del partido es 0 (en juego)
     if (MATRIZ_MARCADOR[3] !== 0) return;
 
     const ahora = performance.now();
@@ -1206,4 +1213,5 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+actualizarVisibilidadMarcador();
 requestAnimationFrame(gameLoop);
