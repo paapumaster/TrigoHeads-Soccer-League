@@ -17,7 +17,7 @@
         <div class="scoreboard">
             <div class="team-block">
                 <div class="team team-1">
-                    <span id="badge1" class="badge" style="background-color: #2563eb;">🇨🇱 CHILE (J1)</span>
+                    <span id="badge1" class="badge" style="background-color: #dc2626;">🇨🇱 CHILE (J1)</span>
                     <span id="score1" class="score">0</span>
                 </div>
                 <div class="power-wrapper">
@@ -30,8 +30,8 @@
 
             <div class="timer-box">
                 <span id="timer">01:30</span>
-                <small id="gameStatus">CONFIGURANDO</small>
-                <button id="openMenuBtn" class="btn-mini">⚙️ Cambiar Equipos / Modo</button>
+                <small id="gameStatus">MENÚ</small>
+                <button id="openMenuBtn" class="btn-mini">☰ Menú Principal</button>
             </div>
 
             <div class="team-block align-right">
@@ -48,52 +48,115 @@
             </div>
         </div>
 
-        <!-- Lienzo del Juego + Pantalla Inicial de Selección -->
+        <!-- Lienzo del Juego + Menú Arcade Estilo Football Heads -->
         <div class="canvas-wrapper">
             <canvas id="gameCanvas" width="900" height="500"></canvas>
 
-            <!-- Pantalla Inicial de Configuración (Overlay) -->
-            <div id="setupOverlay" class="setup-overlay">
-                <div class="setup-card">
-                    <h2>🏆 Configuración del Partido</h2>
-                    
-                    <div class="mode-selector">
-                        <label>Modo de Juego:</label>
-                        <div class="mode-buttons">
-                            <button id="btnModeCPU" class="mode-btn active">🤖 1 Jugador vs CPU</button>
-                            <button id="btnMode2P" class="mode-btn">🎮 2 Jugadores (Local)</button>
+            <div id="setupOverlay" class="arcade-overlay">
+                <!-- PANTALLA 1: INICIO -->
+                <div id="screenStart" class="arcade-screen active">
+                    <div class="arcade-emblem">
+                        <div class="emblem-top">TRIGOHEADS</div>
+                        <div class="emblem-sub">SOCCER LEAGUE</div>
+                    </div>
+                    <div class="arcade-edition">EDICIÓN MATEMÁTICA ABPRO</div>
+
+                    <div class="capsule-menu">
+                        <button id="btnStartCPU" class="capsule-btn">1 JUGADOR VS CPU</button>
+                        <button id="btnStart2P" class="capsule-btn">DOS JUGADORES</button>
+                        <button id="btnQuickMatch" class="capsule-btn secondary">PARTIDO RÁPIDO</button>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 2: SELECCIÓN DE EQUIPO -->
+                <div id="screenTeams" class="arcade-screen">
+                    <div class="ribbon-banner">Selección de equipo</div>
+
+                    <div class="vs-stage">
+                        <!-- Lado Izquierdo (J1) -->
+                        <div class="side-panel">
+                            <div id="flag1" class="flag-box">🇨🇱</div>
+                            <div class="carousel-row">
+                                <button id="prevTeam1" class="arrow-btn" aria-label="Equipo anterior J1">◀</button>
+                                <div class="entity-display">
+                                    <div id="nameTeam1" class="entity-title">CHILE</div>
+                                    <div id="jerseyPreview1" class="jersey-mini" style="background: linear-gradient(180deg, #dc2626 50%, #2563eb 50%);"></div>
+                                    <small id="powerTag1" class="power-mini-tag">Onda Senoidal</small>
+                                </div>
+                                <button id="nextTeam1" class="arrow-btn" aria-label="Siguiente equipo J1">▶</button>
+                            </div>
+                        </div>
+
+                        <div class="vs-center">Vs</div>
+
+                        <!-- Lado Derecho (J2 / CPU) -->
+                        <div class="side-panel">
+                            <div id="flag2" class="flag-box">🇦🇷</div>
+                            <div class="carousel-row">
+                                <button id="prevTeam2" class="arrow-btn" aria-label="Equipo anterior J2">◀</button>
+                                <div class="entity-display">
+                                    <div id="nameTeam2" class="entity-title">ARGENTINA</div>
+                                    <div id="jerseyPreview2" class="jersey-mini" style="background: linear-gradient(180deg, #38bdf8 50%, #ffffff 50%);"></div>
+                                    <small id="powerTag2" class="power-mini-tag">Onda Senoidal</small>
+                                </div>
+                                <button id="nextTeam2" class="arrow-btn" aria-label="Siguiente equipo J2">▶</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="teams-selector-grid">
-                        <!-- Selección J1 -->
-                        <div class="player-select-box">
-                            <h3>Jugador 1 (Izquierda)</h3>
-                            <select id="selectTeam1" class="team-dropdown">
-                                <option value="chile" selected>🇨🇱 Chile — Poder: Onda Senoidal y = A·sin(ωx)</option>
-                                <option value="brasil">🇧🇷 Brasil — Poder: Onda Senoidal y = A·sin(ωx)</option>
-                                <option value="alemania">🇩🇪 Alemania — Poder: Tiro Bala (g = 0)</option>
-                                <option value="argentina">🇦🇷 Argentina — Poder: Onda Senoidal y = A·sin(ωx)</option>
-                                <option value="japon">🇯🇵 Japón — Poder: Tiro Bala (g = 0)</option>
-                            </select>
-                            <p id="powerDesc1" class="power-desc">Trayectoria trigonométrica oscilante difícil de atajar.</p>
+                    <div class="bottom-nav-btns">
+                        <button id="backToStartBtn" class="capsule-btn small">ATRÁS</button>
+                        <button id="goToPitchBtn" class="capsule-btn small highlight">SIGUIENTE</button>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 3: TERRENO DE JUEGO -->
+                <div id="screenPitch" class="arcade-screen">
+                    <div class="ribbon-banner">Terreno de juego</div>
+
+                    <div class="pitch-layout">
+                        <div class="pitch-preview-area">
+                            <div class="carousel-row">
+                                <button id="prevPitch" class="arrow-btn">◀</button>
+                                <div id="pitchPreviewBox" class="pitch-box estadio-clasico">
+                                    <span id="pitchLabel" class="pitch-badge">Estadio Clásico</span>
+                                </div>
+                                <button id="nextPitch" class="arrow-btn">▶</button>
+                            </div>
+
+                            <div class="ball-row">
+                                <span class="sub-label">Balón</span>
+                                <div class="ball-options">
+                                    <button id="ballClassicBtn" class="ball-choice selected" title="Balón Clásico">⚽</button>
+                                    <button id="ballNeonBtn" class="ball-choice" title="Balón Pro">🏀</button>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Selección J2 / CPU -->
-                        <div class="player-select-box">
-                            <h3 id="titleSelect2">Rival / CPU (Derecha)</h3>
-                            <select id="selectTeam2" class="team-dropdown">
-                                <option value="argentina" selected>🇦🇷 Argentina — Poder: Onda Senoidal y = A·sin(ωx)</option>
-                                <option value="alemania">🇩🇪 Alemania — Poder: Tiro Bala (g = 0)</option>
-                                <option value="brasil">🇧🇷 Brasil — Poder: Onda Senoidal y = A·sin(ωx)</option>
-                                <option value="japon">🇯🇵 Japón — Poder: Tiro Bala (g = 0)</option>
-                                <option value="chile">🇨🇱 Chile — Poder: Onda Senoidal y = A·sin(ωx)</option>
-                            </select>
-                            <p id="powerDesc2" class="power-desc">Trayectoria trigonométrica oscilante difícil de atajar.</p>
+                        <div class="modifiers-col">
+                            <label class="mod-row">
+                                <span>Viento (Fuerza vx)</span>
+                                <input type="checkbox" id="chkWind">
+                            </label>
+                            <label class="mod-row">
+                                <span>Estela de Poder</span>
+                                <input type="checkbox" id="chkTrail" checked>
+                            </label>
+                            <label class="mod-row">
+                                <span>Relator y Audio</span>
+                                <input type="checkbox" id="chkAudio" checked>
+                            </label>
+                            <label class="mod-row">
+                                <span>Modo Turbo (60+ FPS)</span>
+                                <input type="checkbox" id="chkTurbo">
+                            </label>
                         </div>
                     </div>
 
-                    <button id="startMatchBtn" class="btn-start">⚽ ¡INICIAR PARTIDO!</button>
+                    <div class="bottom-nav-btns">
+                        <button id="backToTeamsBtn" class="capsule-btn small">ATRÁS</button>
+                        <button id="launchGameBtn" class="capsule-btn small play-btn">JUGAR</button>
+                    </div>
                 </div>
             </div>
         </div>
