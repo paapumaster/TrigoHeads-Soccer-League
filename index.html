@@ -31,7 +31,10 @@
             <div class="timer-box">
                 <span id="timer">01:30</span>
                 <small id="gameStatus">MENÚ</small>
-                <button id="openMenuBtn" class="btn-mini">☰ Menú Principal</button>
+                <div class="header-btns">
+                    <button id="pauseMatchBtn" class="btn-mini">⏸ Pausa / Salir</button>
+                    <button id="openMenuBtn" class="btn-mini">☰ Menú</button>
+                </div>
             </div>
 
             <div class="team-block align-right">
@@ -48,10 +51,28 @@
             </div>
         </div>
 
-        <!-- Lienzo del Juego + Menú Arcade Estilo Football Heads -->
+        <!-- Lienzo del Juego + Menú Arcade + Pausa + Estadísticas -->
         <div class="canvas-wrapper">
             <canvas id="gameCanvas" width="900" height="500"></canvas>
 
+            <!-- Modal de Pausa con Botones Circulares (Continuar / Salir) -->
+            <div id="pauseModal" class="pause-modal hidden">
+                <div class="pause-card">
+                    <h3>¿DESEAS CONTINUAR EL PARTIDO?</h3>
+                    <div class="circle-actions">
+                        <button id="btnResumeMatch" class="circle-btn green" title="Continuar partido">
+                            <span>▶</span>
+                            <small>CONTINUAR</small>
+                        </button>
+                        <button id="btnQuitToStats" class="circle-btn red" title="Salir y ver estadísticas">
+                            <span>⎋</span>
+                            <small>SALIR</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overlay Principal de Menús y Estadísticas -->
             <div id="setupOverlay" class="arcade-overlay">
                 <!-- PANTALLA 1: INICIO -->
                 <div id="screenStart" class="arcade-screen active">
@@ -73,7 +94,6 @@
                     <div class="ribbon-banner">Selección de equipo</div>
 
                     <div class="vs-stage">
-                        <!-- Lado Izquierdo (J1) -->
                         <div class="side-panel">
                             <div id="flag1" class="flag-box">🇨🇱</div>
                             <div class="carousel-row">
@@ -89,7 +109,6 @@
 
                         <div class="vs-center">Vs</div>
 
-                        <!-- Lado Derecho (J2 / CPU) -->
                         <div class="side-panel">
                             <div id="flag2" class="flag-box">🇦🇷</div>
                             <div class="carousel-row">
@@ -158,6 +177,47 @@
                         <button id="launchGameBtn" class="capsule-btn small play-btn">JUGAR</button>
                     </div>
                 </div>
+
+                <!-- PANTALLA 4: ESTADÍSTICAS DEL PARTIDO -->
+                <div id="screenStats" class="arcade-screen">
+                    <div class="ribbon-banner">Estadísticas del partido</div>
+
+                    <div class="stats-board">
+                        <div class="stats-header-match">
+                            <span id="statTeam1Label" class="stat-team-name">🇨🇱 CHILE</span>
+                            <span id="statFinalScore" class="stat-big-score">0 : 0</span>
+                            <span id="statTeam2Label" class="stat-team-name">🇦🇷 ARGENTINA</span>
+                        </div>
+
+                        <div class="stats-table">
+                            <div class="stat-row">
+                                <span id="statTouches1" class="stat-val">0</span>
+                                <span class="stat-concept">Toques / Cabezazos</span>
+                                <span id="statTouches2" class="stat-val">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span id="statShots1" class="stat-val">0</span>
+                                <span class="stat-concept">Remates con Botín</span>
+                                <span id="statShots2" class="stat-val">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span id="statPowers1" class="stat-val">0</span>
+                                <span class="stat-concept">Super Tiros Matemáticos</span>
+                                <span id="statPowers2" class="stat-val">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span id="statMaxSpeed" class="stat-val-center">0.0 px/f</span>
+                                <span class="stat-concept">Velocidad Máxima Balón</span>
+                                <span id="statTimePlayed" class="stat-val-center">00:00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav-btns">
+                        <button id="statsBackToMenuBtn" class="capsule-btn small">ATRÁS</button>
+                        <button id="statsNextMatchBtn" class="capsule-btn small play-btn">SIGUIENTE</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -194,7 +254,7 @@
         <footer class="controls-bar">
             <div><strong>J1:</strong> W (Saltar) | A/D (Mover) | Espacio (Patear) | <b>S (Super Tiro)</b></div>
             <div><strong>J2:</strong> ↑ (Saltar) | ←/→ (Mover) | Enter (Patear) | <b>↓ (Super Tiro)</b></div>
-            <div><strong>Sistema:</strong> <b>M</b> (Vectores) | <b>R</b> (Reiniciar)</div>
+            <div><strong>Sistema:</strong> <b>P / Esc</b> (Pausa) | <b>M</b> (Vectores)</div>
         </footer>
     </main>
 

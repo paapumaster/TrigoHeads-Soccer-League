@@ -138,8 +138,13 @@ body {
     letter-spacing: 1px;
 }
 
-.btn-mini {
+.header-btns {
+    display: flex;
+    gap: 5px;
     margin-top: 3px;
+}
+
+.btn-mini {
     background: #334155;
     color: #e2e8f0;
     border: 1px solid #475569;
@@ -153,7 +158,7 @@ body {
     background: #475569;
 }
 
-/* Canvas y Menú Arcade */
+/* Canvas y Contenedores de Menú / Pausa */
 .canvas-wrapper {
     position: relative;
     display: flex;
@@ -170,6 +175,91 @@ canvas {
     display: block;
 }
 
+/* Modal de Pausa con Botones Circulares */
+.pause-modal {
+    position: absolute;
+    inset: 6px;
+    border-radius: 6px;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(2px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 15;
+}
+
+.pause-modal.hidden {
+    display: none;
+}
+
+.pause-card {
+    background: rgba(15, 23, 42, 0.92);
+    border: 2px solid #475569;
+    border-radius: 14px;
+    padding: 24px 36px;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8);
+}
+
+.pause-card h3 {
+    font-size: 1.15rem;
+    color: #f8fafc;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+.circle-actions {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+}
+
+.circle-btn {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    border: 3px solid #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+}
+
+.circle-btn span {
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.circle-btn small {
+    font-size: 0.65rem;
+    font-weight: 800;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
+.circle-btn.green {
+    background: radial-gradient(circle at 35% 30%, #86efac, #16a34a 70%);
+    box-shadow: 0 5px 0 #14532d, 0 8px 18px rgba(0, 0, 0, 0.6);
+}
+
+.circle-btn.red {
+    background: radial-gradient(circle at 35% 30%, #fca5a5, #dc2626 70%);
+    box-shadow: 0 5px 0 #7f1d1d, 0 8px 18px rgba(0, 0, 0, 0.6);
+}
+
+.circle-btn:hover {
+    transform: scale(1.08);
+    filter: brightness(1.08);
+}
+
+.circle-btn:active {
+    transform: translateY(3px);
+}
+
+/* Overlay Principal de Menús y Estadísticas */
 .arcade-overlay {
     position: absolute;
     inset: 6px;
@@ -192,7 +282,7 @@ canvas {
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 30px;
+    padding: 18px 28px;
 }
 
 .arcade-screen.active {
@@ -287,11 +377,10 @@ canvas {
     background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
 }
 
-/* Cinta Superior Roja (Inspirado en Selección de equipo / Terreno de juego) */
 .ribbon-banner {
     background: linear-gradient(90deg, #b91c1c, #ef4444, #b91c1c);
     color: #ffffff;
-    font-size: 1.35rem;
+    font-size: 1.3rem;
     font-weight: 800;
     padding: 6px 45px;
     border-radius: 4px;
@@ -391,7 +480,7 @@ canvas {
     gap: 24px;
 }
 
-/* Pantalla 3: Terreno de juego y Modificadores */
+/* Pantalla 3: Terreno de juego */
 .pitch-layout {
     display: flex;
     align-items: center;
@@ -500,6 +589,72 @@ canvas {
     height: 18px;
     accent-color: #facc15;
     cursor: pointer;
+}
+
+/* Pantalla 4: Estadísticas del Partido */
+.stats-board {
+    width: 100%;
+    max-width: 680px;
+    background: rgba(15, 23, 42, 0.82);
+    border: 2px solid #475569;
+    border-radius: 10px;
+    padding: 14px 22px;
+}
+
+.stats-header-match {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #334155;
+}
+
+.stat-team-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+
+.stat-big-score {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #facc15;
+    letter-spacing: 3px;
+}
+
+.stats-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stat-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 90px;
+    align-items: center;
+    text-align: center;
+    background: rgba(30, 41, 59, 0.55);
+    padding: 7px 12px;
+    border-radius: 6px;
+}
+
+.stat-val {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #f8fafc;
+}
+
+.stat-val-center {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #4ade80;
+}
+
+.stat-concept {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    font-weight: 600;
 }
 
 /* Panel Matemático */

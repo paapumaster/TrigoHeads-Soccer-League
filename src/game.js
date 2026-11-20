@@ -1,6 +1,7 @@
 /**
  * Motor Principal y Game Loop a 60 FPS - TrigoHeads: Soccer League
- * Menú Arcade inspirado en Football Heads + Super Tiros Matemáticos + CPU Euclidiana.
+ * Incluye: Pausa circular (Continuar/Salir), Estadísticas de Partido (Atrás/Siguiente),
+ * Menú Arcade, Super Tiros Matemáticos y CPU Euclidiana.
  */
 
 const canvas = document.getElementById("gameCanvas");
@@ -25,6 +26,27 @@ const uiBallVel = document.getElementById("ballVel");
 const uiImpactAngle = document.getElementById("impactAngle");
 const uiEuclideanDist = document.getElementById("euclideanDist");
 const btnDebug = document.getElementById("toggleDebugBtn");
+
+// Referencias Pausa y Estadísticas
+const pauseMatchBtn = document.getElementById("pauseMatchBtn");
+const pauseModal = document.getElementById("pauseModal");
+const btnResumeMatch = document.getElementById("btnResumeMatch");
+const btnQuitToStats = document.getElementById("btnQuitToStats");
+
+const screenStats = document.getElementById("screenStats");
+const statTeam1Label = document.getElementById("statTeam1Label");
+const statTeam2Label = document.getElementById("statTeam2Label");
+const statFinalScore = document.getElementById("statFinalScore");
+const statTouches1 = document.getElementById("statTouches1");
+const statTouches2 = document.getElementById("statTouches2");
+const statShots1 = document.getElementById("statShots1");
+const statShots2 = document.getElementById("statShots2");
+const statPowers1 = document.getElementById("statPowers1");
+const statPowers2 = document.getElementById("statPowers2");
+const statMaxSpeed = document.getElementById("statMaxSpeed");
+const statTimePlayed = document.getElementById("statTimePlayed");
+const statsBackToMenuBtn = document.getElementById("statsBackToMenuBtn");
+const statsNextMatchBtn = document.getElementById("statsNextMatchBtn");
 
 // Referencias Menú Arcade
 const setupOverlay = document.getElementById("setupOverlay");
@@ -67,39 +89,20 @@ const chkTrail = document.getElementById("chkTrail");
 const chkAudio = document.getElementById("chkAudio");
 const chkTurbo = document.getElementById("chkTurbo");
 
-// Catálogos para carrusel de equipos y terrenos
 const LISTA_EQUIPOS = Object.keys(CATALOGO_EQUIPOS);
 const ESTADIOS = [
-    {
-        nombre: "Estadio Clásico",
-        clase: "estadio-clasico",
-        cieloTop: "#0c4a6e",
-        cieloBot: "#0369a1",
-        cesped: "#15803d"
-    },
-    {
-        nombre: "Estadio Nocturno",
-        clase: "estadio-nocturno",
-        cieloTop: "#090d16",
-        cieloBot: "#1e1b4b",
-        cesped: "#14532d"
-    },
-    {
-        nombre: "Estadio Atardecer",
-        clase: "estadio-atardecer",
-        cieloTop: "#7c2d12",
-        cieloBot: "#c2410c",
-        cesped: "#15803d"
-    }
+    { nombre: "Estadio Clásico", clase: "estadio-clasico", cieloTop: "#0c4a6e", cieloBot: "#0369a1", cesped: "#15803d" },
+    { nombre: "Estadio Nocturno", clase: "estadio-nocturno", cieloTop: "#090d16", cieloBot: "#1e1b4b", cesped: "#14532d" },
+    { nombre: "Estadio Atardecer", clase: "estadio-atardecer", cieloTop: "#7c2d12", cieloBot: "#c2410c", cesped: "#15803d" }
 ];
 
-// Estado del Juego y Configuración
+// Estado del Juego
 const teclas = {};
 let modoCPU = true;
-let idxEquipo1 = 0; // chile
-let idxEquipo2 = 1; // argentina
+let idxEquipo1 = 0;
+let idxEquipo2 = 1;
 let idxEstadio = 0;
-let estiloBalon = "clasico"; // "clasico" | "neon"
+let estiloBalon = "clasico";
 let vientoActivo = false;
 let estelaActiva = true;
 let audioActivo = true;
@@ -113,13 +116,97 @@ let particulasConfeti = [];
 let ultimoSegundo = performance.now();
 let cooldownSonidoGolpe = 0;
 
+// Estadísticas acumuladas del partido actual
+const statsPartido = {
+    toques1: 0,
+    toques2: 0,
+    remates1: 0,
+    remates2: 0,
+    superTiros1: 0,
+    superTiros2: 0,
+    velocidadMaxima: 0,
+    segundosJugados: 0
+};
+
 const VEL_MAXIMA_BALON = 17.5;
 
-// --- NAVEGACIÓN ENTRE PANTALLAS DEL MENÚ ---
+// --- NAVEGACIÓN ENTRE PANTALLAS ---
 function mostrarPantalla(pantallaElemento) {
-    [screenStart, screenTeams, screenPitch].forEach((s) => s.classList.remove("active"));
+    [screenStart, screenTeams, screenPitch, screenStats].forEach((s) => s.classList.remove("active"));
     pantallaElemento.classList.add("active");
 }
+
+function abrirModalPausa() {
+    // Solo se puede pausar si el partido está en juego (estado 0)
+    if (MATRIZ_MARCADOR[3] === 0 && mensajeGolTimer === 0) {
+        MATRIZ_MARCADOR[3] = 3; // Estado 3 = pausado
+        pauseModal.classList.remove("hidden");
+        uiStatus.textContent = "PAUSADO";
+        uiStatus.style.color = "#facc15";
+    }
+}
+
+function continuarPartido() {
+    if (MATRIZ_MARCADOR[3] === 3) {
+        pauseModal.classList.add("hidden");
+        MATRIZ_MARCADOR[3] = 0;
+        ultimoSegundo = performance.now();
+        uiStatus.textContent = MATRIZ_MARCADOR[4] === 1 ? "⚡ ¡GOL DE ORO! ⚡" : "EN JUEGO";
+        uiStatus.style.color = MATRIZ_MARCADOR[4] === 1 ? "#facc15" : "#4ade80";
+    }
+}
+
+function salirYMostrarEstadisticas() {
+    pauseModal.classList.add("hidden");
+    MATRIZ_MARCADOR[3] = 1; // Finalizado / Resumen
+    if (audioActivo) AudioEngine.sonarSilbato(true);
+
+    const eq1 = CATALOGO_EQUIPOS[jugador1.equipoKey];
+    const eq2 = CATALOGO_EQUIPOS[jugador2.equipoKey];
+
+    statTeam1Label.textContent = `${eq1.bandera} ${eq1.nombre}`;
+    statTeam2Label.textContent = `${eq2.bandera} ${eq2.nombre}`;
+    statFinalScore.textContent = `${MATRIZ_MARCADOR[0]} : ${MATRIZ_MARCADOR[1]}`;
+
+    statTouches1.textContent = statsPartido.toques1;
+    statTouches2.textContent = statsPartido.toques2;
+    statShots1.textContent = statsPartido.remates1;
+    statShots2.textContent = statsPartido.remates2;
+    statPowers1.textContent = statsPartido.superTiros1;
+    statPowers2.textContent = statsPartido.superTiros2;
+    statMaxSpeed.textContent = `${statsPartido.velocidadMaxima.toFixed(1)} px/f`;
+
+    const min = Math.floor(statsPartido.segundosJugados / 60);
+    const seg = statsPartido.segundosJugados % 60;
+    statTimePlayed.textContent = `${String(min).padStart(2, "0")}:${String(seg).padStart(2, "0")}`;
+
+    uiStatus.textContent = "ESTADÍSTICAS";
+    uiStatus.style.color = "#38bdf8";
+
+    setupOverlay.classList.remove("hidden");
+    mostrarPantalla(screenStats);
+}
+
+pauseMatchBtn.addEventListener("click", () => {
+    if (MATRIZ_MARCADOR[3] === 3) continuarPartido();
+    else abrirModalPausa();
+});
+
+btnResumeMatch.addEventListener("click", continuarPartido);
+btnQuitToStats.addEventListener("click", salirYMostrarEstadisticas);
+
+// Botones de la pantalla de estadísticas: ATRÁS -> Menú Principal | SIGUIENTE -> Nuevo Partido
+statsBackToMenuBtn.addEventListener("click", () => {
+    MATRIZ_MARCADOR[3] = 2;
+    uiStatus.textContent = "MENÚ";
+    uiStatus.style.color = "#38bdf8";
+    mostrarPantalla(screenStart);
+});
+
+statsNextMatchBtn.addEventListener("click", () => {
+    setupOverlay.classList.add("hidden");
+    reiniciarPartidoCompleto();
+});
 
 function sincronizarVistaEquipos() {
     const eq1 = CATALOGO_EQUIPOS[LISTA_EQUIPOS[idxEquipo1]];
@@ -160,6 +247,7 @@ btnQuickMatch.addEventListener("click", () => {
 });
 
 openMenuBtn.addEventListener("click", () => {
+    pauseModal.classList.add("hidden");
     MATRIZ_MARCADOR[3] = 2;
     setupOverlay.classList.remove("hidden");
     mostrarPantalla(screenStart);
@@ -245,6 +333,7 @@ function aplicarConfiguracionYArrancar() {
     uiBadge2.style.backgroundColor = eq2.colorPrimario;
     uiBadge2.style.color = eq2.colorTextoBadge;
 
+    pauseModal.classList.add("hidden");
     setupOverlay.classList.add("hidden");
     reiniciarPartidoCompleto();
 }
@@ -252,10 +341,17 @@ function aplicarConfiguracionYArrancar() {
 // --- LISTENERS DE TECLADO ---
 window.addEventListener("keydown", (e) => {
     teclas[e.code] = true;
-    if (audioActivo && MATRIZ_MARCADOR[3] !== 2) AudioEngine.init();
+    if (audioActivo && MATRIZ_MARCADOR[3] === 0) AudioEngine.init();
 
     if (e.code === "KeyM") toggleModoDebug();
-    if (e.code === "KeyR" && MATRIZ_MARCADOR[3] !== 2) reiniciarPartidoCompleto();
+    if (e.code === "KeyP" || e.code === "Escape") {
+        if (MATRIZ_MARCADOR[3] === 0) abrirModalPausa();
+        else if (MATRIZ_MARCADOR[3] === 3) continuarPartido();
+    }
+    if (e.code === "KeyR" && (MATRIZ_MARCADOR[3] === 0 || MATRIZ_MARCADOR[3] === 3)) {
+        pauseModal.classList.add("hidden");
+        reiniciarPartidoCompleto();
+    }
 });
 
 window.addEventListener("keyup", (e) => {
@@ -276,6 +372,16 @@ function reiniciarPartidoCompleto() {
     MATRIZ_MARCADOR[2] = 90;
     MATRIZ_MARCADOR[3] = 0;
     MATRIZ_MARCADOR[4] = 0;
+
+    statsPartido.toques1 = 0;
+    statsPartido.toques2 = 0;
+    statsPartido.remates1 = 0;
+    statsPartido.remates2 = 0;
+    statsPartido.superTiros1 = 0;
+    statsPartido.superTiros2 = 0;
+    statsPartido.velocidadMaxima = 0;
+    statsPartido.segundosJugados = 0;
+
     uiScore1.textContent = "0";
     uiScore2.textContent = "0";
     uiStatus.textContent = "EN JUEGO";
@@ -364,6 +470,9 @@ function intentarActivarSuperTiro(j) {
         j.expresion = "enojado";
         j.timerExpresion = 35;
 
+        if (j.id === 1) statsPartido.superTiros1++;
+        else statsPartido.superTiros2++;
+
         balon.superTiroActivo = j.tipoPoder;
         balon.superTiroOrigenX = balon.x;
         balon.superTiroBaseY = Math.min(balon.y, FISICA.SUELO_Y - 75);
@@ -391,11 +500,14 @@ function actualizar() {
     if (cameraShake > 0) cameraShake--;
     if (cooldownSonidoGolpe > 0) cooldownSonidoGolpe--;
 
+    // Solo actualiza la física cuando el estado del partido es 0 (en juego)
     if (MATRIZ_MARCADOR[3] !== 0) return;
 
     const ahora = performance.now();
     if (ahora - ultimoSegundo >= 1000 && mensajeGolTimer === 0) {
         ultimoSegundo = ahora;
+        statsPartido.segundosJugados++;
+
         if (MATRIZ_MARCADOR[2] > 0) {
             MATRIZ_MARCADOR[2]--;
             actualizarRelojUI();
@@ -408,7 +520,8 @@ function actualizar() {
                     uiStatus.style.color = "#facc15";
                     if (audioActivo) AudioEngine.sonarSilbato(false);
                 } else {
-                    finalizarPartido();
+                    salirYMostrarEstadisticas();
+                    return;
                 }
             }
         }
@@ -418,7 +531,8 @@ function actualizar() {
         mensajeGolTimer--;
         if (mensajeGolTimer === 0) {
             if (MATRIZ_MARCADOR[4] === 1) {
-                finalizarPartido();
+                salirYMostrarEstadisticas();
+                return;
             } else {
                 jugador1.reiniciar();
                 jugador2.reiniciar();
@@ -479,15 +593,14 @@ function actualizar() {
     resolverColisionJugadorBalon(jugador2);
 
     limitarEntidadesEnCancha();
+
+    const rapidezActual = Math.hypot(balon.vx, balon.vy);
+    if (rapidezActual > statsPartido.velocidadMaxima) {
+        statsPartido.velocidadMaxima = rapidezActual;
+    }
+
     verificarEventosCancha();
     actualizarTelemetriaUI();
-}
-
-function finalizarPartido() {
-    MATRIZ_MARCADOR[3] = 1;
-    uiStatus.textContent = "FINALIZADO (Pulsa R)";
-    uiStatus.style.color = "#facc15";
-    if (audioActivo) AudioEngine.sonarSilbato(true);
 }
 
 function actualizarJugador(j) {
@@ -602,6 +715,9 @@ function resolverColisionJugadorBalon(j) {
                 balon.vy = Math.min(balon.vy, -1.8);
             }
 
+            if (j.id === 1) statsPartido.toques1++;
+            else statsPartido.toques2++;
+
             j.cargarEnergia(8);
             actualizarBarrasEnergiaUI();
 
@@ -626,6 +742,9 @@ function resolverColisionJugadorBalon(j) {
             balon.vx = vectorRemate.vx;
             balon.vy = vectorRemate.vy;
             j.pateando = false;
+
+            if (j.id === 1) statsPartido.remates1++;
+            else statsPartido.remates2++;
 
             j.cargarEnergia(15);
             actualizarBarrasEnergiaUI();
@@ -802,7 +921,6 @@ function dibujar() {
 
     const est = ESTADIOS[idxEstadio];
 
-    // 1. Cielo / Estadio elegido
     const gradCielo = ctx.createLinearGradient(0, 0, 0, FISICA.SUELO_Y);
     gradCielo.addColorStop(0, est.cieloTop);
     gradCielo.addColorStop(1, est.cieloBot);
@@ -820,35 +938,28 @@ function dibujar() {
     ctx.arc(canvas.width / 2, FISICA.SUELO_Y - 80, 70, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 2. Césped
     ctx.fillStyle = est.cesped;
     ctx.fillRect(0, FISICA.SUELO_Y, canvas.width, canvas.height - FISICA.SUELO_Y);
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, FISICA.SUELO_Y, canvas.width, 4);
 
-    // 3. Arcos
     dibujarArco(MATRIZ_ARCOS[0], true);
     dibujarArco(MATRIZ_ARCOS[1], false);
 
-    // 4. Jugadores
     dibujarJugador(jugador1);
     dibujarJugador(jugador2);
 
-    // 5. Estela y Balón
     if (estelaActiva) dibujarEstelaBalon();
     dibujarBalon();
 
-    // 6. Confeti
     for (const p of particulasConfeti) {
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x, p.y, p.tamano, p.tamano);
     }
 
-    // 7. Vectores Matemáticos (Tecla M)
     if (mostrarVectores) dibujarVectoresDebug();
 
-    // 8. Cartel de ¡GOL!
     if (mensajeGolTimer > 0) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
