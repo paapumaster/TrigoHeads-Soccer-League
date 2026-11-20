@@ -1,24 +1,46 @@
 /**
  * Motor Principal y Game Loop a 60 FPS - TrigoHeads: Soccer League
- * Física calibrada: Conducción suave, transferencia de momento realista y tope de velocidad.
+ * Incluye: Super Tiros Matemáticos, IA CPU Euclidiana, Estela del Balón, Gestos y Gol de Oro.
  */
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Referencias al DOM para telemetría en tiempo real
+// Referencias UI Marcador y Energía
 const uiScore1 = document.getElementById("score1");
 const uiScore2 = document.getElementById("score2");
+const uiBadge1 = document.getElementById("badge1");
+const uiBadge2 = document.getElementById("badge2");
+const uiPowerBar1 = document.getElementById("powerBar1");
+const uiPowerBar2 = document.getElementById("powerBar2");
+const uiPowerLabel1 = document.getElementById("powerLabel1");
+const uiPowerLabel2 = document.getElementById("powerLabel2");
 const uiTimer = document.getElementById("timer");
 const uiStatus = document.getElementById("gameStatus");
+const uiFormulaTag = document.getElementById("activeFormulaTag");
+
+// Referencias UI Telemetría
 const uiBallPos = document.getElementById("ballPos");
 const uiBallVel = document.getElementById("ballVel");
 const uiImpactAngle = document.getElementById("impactAngle");
 const uiEuclideanDist = document.getElementById("euclideanDist");
 const btnDebug = document.getElementById("toggleDebugBtn");
 
-// Estado de controles, modo debug y efectos visuales
+// Referencias UI Menú Selección
+const setupOverlay = document.getElementById("setupOverlay");
+const btnModeCPU = document.getElementById("btnModeCPU");
+const btnMode2P = document.getElementById("btnMode2P");
+const selectTeam1 = document.getElementById("selectTeam1");
+const selectTeam2 = document.getElementById("selectTeam2");
+const powerDesc1 = document.getElementById("powerDesc1");
+const powerDesc2 = document.getElementById("powerDesc2");
+const titleSelect2 = document.getElementById("titleSelect2");
+const startMatchBtn = document.getElementById("startMatchBtn");
+const openMenuBtn = document.getElementById("openMenuBtn");
+
+// Estado del Juego
 const teclas = {};
+let modoCPU = true;
 let mostrarVectores = false;
 let mensajeGolTimer = 0;
 let ultimoGoleador = 1;
@@ -29,17 +51,65 @@ let cooldownSonidoGolpe = 0;
 
 const VEL_MAXIMA_BALON = 17.5;
 
-// Listeners de teclado (Input Handling)
+// --- LÓGICA DEL MENÚ DE CONFIGURACIÓN ---
+btnModeCPU.addEventListener("click", () => {
+    modoCPU = true;
+    btnModeCPU.classList.add("active");
+    btnMode2P.classList.remove("active");
+    titleSelect2.textContent = "Rival / CPU (Derecha)";
+});
+
+btnMode2P.addEventListener("click", () => {
+    modoCPU = false;
+    btnMode2P.classList.add("active");
+    btnModeCPU.classList.remove("active");
+    titleSelect2.textContent = "Jugador 2 (Derecha)";
+});
+
+selectTeam1.addEventListener("change", () => {
+    const eq = CATALOGO_EQUIPOS[selectTeam1.value];
+    powerDesc1.textContent = eq.nombrePoder;
+});
+
+selectTeam2.addEventListener("change", () => {
+    const eq = CATALOGO_EQUIPOS[selectTeam2.value];
+    powerDesc2.textContent = eq.nombrePoder;
+});
+
+openMenuBtn.addEventListener("click", () => {
+    MATRIZ_MARCADOR[3] = 2; // Pausar en menú
+    setupOverlay.classList.remove("hidden");
+    uiStatus.textContent = "CONFIGURANDO";
+    uiStatus.style.color = "#38bdf8";
+});
+
+startMatchBtn.addEventListener("click", () => {
+    AudioEngine.init();
+    jugador1.aplicarEquipo(selectTeam1.value);
+    jugador2.aplicarEquipo(selectTeam2.value);
+
+    const eq1 = CATALOGO_EQUIPOS[selectTeam1.value];
+    const eq2 = CATALOGO_EQUIPOS[selectTeam2.value];
+
+    uiBadge1.textContent = `${eq1.bandera} ${eq1.nombre} (J1)`;
+    uiBadge1.style.backgroundColor = eq1.colorPrimario;
+    uiBadge1.style.color = eq1.colorTextoBadge;
+
+    uiBadge2.textContent = `${eq2.bandera} ${eq2.nombre} (${modoCPU ? "CPU" : "J2"})`;
+    uiBadge2.style.backgroundColor = eq2.colorPrimario;
+    uiBadge2.style.color = eq2.colorTextoBadge;
+
+    setupOverlay.classList.add("hidden");
+    reiniciarPartidoCompleto();
+});
+
+// --- LISTENERS DE TECLADO ---
 window.addEventListener("keydown", (e) => {
     teclas[e.code] = true;
-    AudioEngine.init();
+    if (MATRIZ_MARCADOR[3] !== 2) AudioEngine.init();
 
-    if (e.code === "KeyM") {
-        toggleModoDebug();
-    }
-    if (e.code === "KeyR") {
-        reiniciarPartidoCompleto();
-    }
+    if (e.code === "KeyM") toggleModoDebug();
+    if (e.code === "KeyR" && MATRIZ_MARCADOR[3] !== 2) reiniciarPartidoCompleto();
 });
 
 window.addEventListener("keyup", (e) => {
@@ -50,7 +120,7 @@ btnDebug.addEventListener("click", toggleModoDebug);
 
 function toggleModoDebug() {
     mostrarVectores = !mostrarVectores;
-    btnDebug.textContent = `Vectores en Cancha (Tecla M): ${mostrarVectores ? "ON" : "OFF"}`;
+    btnDebug.textContent = `Vectores (Tecla M): ${mostrarVectores ? "ON" : "OFF"}`;
     btnDebug.classList.toggle("active", mostrarVectores);
 }
 
@@ -58,18 +128,25 @@ function reiniciarPartidoCompleto() {
     MATRIZ_MARCADOR[0] = 0;
     MATRIZ_MARCADOR[1] = 0;
     MATRIZ_MARCADOR[2] = 90;
-    MATRIZ_MARCADOR[3] = 0;
+    MATRIZ_MARCADOR[3] = 0; // En juego
+    MATRIZ_MARCADOR[4] = 0; // Sin Gol de Oro
     uiScore1.textContent = "0";
     uiScore2.textContent = "0";
     uiStatus.textContent = "EN JUEGO";
     uiStatus.style.color = "#4ade80";
     particulasConfeti = [];
+    jugador1.energia = 0;
+    jugador2.energia = 0;
     jugador1.reiniciar();
     jugador2.reiniciar();
     balon.reiniciar(0);
+    ultimoSegundo = performance.now();
+    actualizarRelojUI();
+    actualizarBarrasEnergiaUI();
     AudioEngine.sonarSilbato(false);
 }
 
+// --- EFECTOS VISUALES (CONFETI) ---
 function generarExplosionConfeti(xOrigen, yOrigen, colorPrincipal) {
     const colores = [colorPrincipal, "#facc15", "#ffffff", "#38bdf8", "#4ade80"];
     for (let i = 0; i < 65; i++) {
@@ -95,101 +172,189 @@ function actualizarConfeti() {
         p.x += p.vx;
         p.y += p.vy;
         p.vida--;
-        if (p.vida <= 0) {
-            particulasConfeti.splice(i, 1);
+        if (p.vida <= 0) particulasConfeti.splice(i, 1);
+    }
+}
+
+// --- INTELIGENCIA ARTIFICIAL CPU BASADA EN DISTANCIA EUCLIDIANA ---
+function procesarIA_CPU() {
+    const distBalon = MathEngine.distanciaEuclidiana(jugador2.x, jugador2.y, balon.x, balon.y);
+
+    // Zona defensiva / persecución en eje X
+    const objetivoX = balon.x > 380 ? balon.x + 18 : 680;
+
+    if (jugador2.x < objetivoX - 10) {
+        jugador2.vx = jugador2.velocidadMovimiento * 0.92;
+    } else if (jugador2.x > objetivoX + 10) {
+        jugador2.vx = -jugador2.velocidadMovimiento * 0.92;
+    } else {
+        jugador2.vx = MathEngine.aplicarFriccion(jugador2.vx, FISICA.FRICCION_SUELO);
+    }
+
+    // Saltar si el balón viene por aire cerca de la CPU
+    if (balon.y < jugador2.y - 35 && Math.abs(balon.x - jugador2.x) < 95 && jugador2.enSuelo) {
+        jugador2.vy = jugador2.fuerzaSalto;
+        jugador2.enSuelo = false;
+    }
+
+    // Patear o lanzar Super Tiro si el balón está en radio de alcance
+    if (distBalon < 72 && balon.x <= jugador2.x) {
+        if (jugador2.energia >= 100) {
+            intentarActivarSuperTiro(jugador2);
+        } else if (!jugador2.pateando) {
+            jugador2.pateando = true;
+            jugador2.tiempoPatada = 12;
+            jugador2.expresion = "enojado";
+            jugador2.timerExpresion = 20;
         }
     }
 }
 
-// Fase 1 del Game Loop: Procesar entradas y actualizar físicas
+// --- ACTIVACIÓN DE SUPER TIRO ESPECIAL (SENOIDAL O BALA) ---
+function intentarActivarSuperTiro(j) {
+    if (j.energia < 100) return false;
+
+    const dist = MathEngine.distanciaEuclidiana(j.x, j.y, balon.x, balon.y);
+    if (dist <= 95) {
+        j.energia = 0;
+        j.pateando = true;
+        j.tiempoPatada = 16;
+        j.expresion = "enojado";
+        j.timerExpresion = 35;
+
+        balon.superTiroActivo = j.tipoPoder;
+        balon.superTiroOrigenX = balon.x;
+        balon.superTiroBaseY = Math.min(balon.y, FISICA.SUELO_Y - 75);
+        balon.superTiroDueno = j.id;
+
+        if (j.tipoPoder === "senoidal") {
+            balon.vx = j.mirada * 11.5;
+            balon.vy = 0;
+        } else {
+            // Tiro Bala rectilíneo sin gravedad
+            balon.vx = j.mirada * 21;
+            balon.vy = 0;
+        }
+
+        cameraShake = 12;
+        AudioEngine.sonarSuperTiro();
+        actualizarBarrasEnergiaUI();
+        return true;
+    }
+    return false;
+}
+
+// --- FASE 1 DEL GAME LOOP: ACTUALIZAR FÍSICAS ---
 function actualizar() {
     actualizarConfeti();
     if (cameraShake > 0) cameraShake--;
     if (cooldownSonidoGolpe > 0) cooldownSonidoGolpe--;
 
-    // Control del reloj del partido
-    const ahora = performance.now();
-    if (ahora - ultimoSegundo >= 1000 && MATRIZ_MARCADOR[2] > 0 && mensajeGolTimer === 0) {
-        MATRIZ_MARCADOR[2]--;
-        ultimoSegundo = ahora;
-        actualizarRelojUI();
+    // Si estamos en el menú inicial o partido finalizado, no actualizar juego
+    if (MATRIZ_MARCADOR[3] !== 0) return;
 
-        if (MATRIZ_MARCADOR[2] === 0) {
-            MATRIZ_MARCADOR[3] = 1;
-            uiStatus.textContent = "FINALIZADO (Pulsa R)";
-            uiStatus.style.color = "#facc15";
-            AudioEngine.sonarSilbato(true);
+    // Control del reloj del partido y Gol de Oro
+    const ahora = performance.now();
+    if (ahora - ultimoSegundo >= 1000 && mensajeGolTimer === 0) {
+        ultimoSegundo = ahora;
+        if (MATRIZ_MARCADOR[2] > 0) {
+            MATRIZ_MARCADOR[2]--;
+            actualizarRelojUI();
+
+            if (MATRIZ_MARCADOR[2] === 0) {
+                if (MATRIZ_MARCADOR[0] === MATRIZ_MARCADOR[1]) {
+                    // Empate -> Activar Gol de Oro (Muerte Súbita)
+                    MATRIZ_MARCADOR[4] = 1;
+                    uiTimer.textContent = "EXTRA";
+                    uiStatus.textContent = "⚡ ¡GOL DE ORO! ⚡";
+                    uiStatus.style.color = "#facc15";
+                    AudioEngine.sonarSilbato(false);
+                } else {
+                    finalizarPartido();
+                }
+            }
         }
     }
 
-    if (MATRIZ_MARCADOR[3] === 1) return;
-
-    // Pausa celebrando el gol
+    // Pausa celebrando gol
     if (mensajeGolTimer > 0) {
         mensajeGolTimer--;
         if (mensajeGolTimer === 0) {
-            jugador1.reiniciar();
-            jugador2.reiniciar();
-            AudioEngine.sonarSilbato(false);
+            if (MATRIZ_MARCADOR[4] === 1) {
+                finalizarPartido(); // Termina inmediatamente si fue Gol de Oro
+            } else {
+                jugador1.reiniciar();
+                jugador2.reiniciar();
+                AudioEngine.sonarSilbato(false);
+            }
         }
         return;
     }
 
-    // --- MOVIMIENTO JUGADOR 1 ---
-    if (teclas["KeyA"]) {
-        jugador1.vx = -jugador1.velocidadMovimiento;
-    } else if (teclas["KeyD"]) {
-        jugador1.vx = jugador1.velocidadMovimiento;
-    } else {
-        jugador1.vx = MathEngine.aplicarFriccion(jugador1.vx, FISICA.FRICCION_SUELO);
-    }
+    // --- CONTROLES JUGADOR 1 ---
+    if (teclas["KeyA"]) jugador1.vx = -jugador1.velocidadMovimiento;
+    else if (teclas["KeyD"]) jugador1.vx = jugador1.velocidadMovimiento;
+    else jugador1.vx = MathEngine.aplicarFriccion(jugador1.vx, FISICA.FRICCION_SUELO);
 
     if (teclas["KeyW"] && jugador1.enSuelo) {
         jugador1.vy = jugador1.fuerzaSalto;
         jugador1.enSuelo = false;
     }
 
+    if (teclas["KeyS"]) {
+        intentarActivarSuperTiro(jugador1);
+    }
+
     if (teclas["Space"] && !jugador1.pateando) {
         jugador1.pateando = true;
         jugador1.tiempoPatada = 12;
+        jugador1.expresion = "enojado";
+        jugador1.timerExpresion = 18;
     }
 
-    // --- MOVIMIENTO JUGADOR 2 ---
-    if (teclas["ArrowLeft"]) {
-        jugador2.vx = -jugador2.velocidadMovimiento;
-    } else if (teclas["ArrowRight"]) {
-        jugador2.vx = jugador2.velocidadMovimiento;
+    // --- CONTROLES JUGADOR 2 O CPU ---
+    if (modoCPU) {
+        procesarIA_CPU();
     } else {
-        jugador2.vx = MathEngine.aplicarFriccion(jugador2.vx, FISICA.FRICCION_SUELO);
+        if (teclas["ArrowLeft"]) jugador2.vx = -jugador2.velocidadMovimiento;
+        else if (teclas["ArrowRight"]) jugador2.vx = jugador2.velocidadMovimiento;
+        else jugador2.vx = MathEngine.aplicarFriccion(jugador2.vx, FISICA.FRICCION_SUELO);
+
+        if (teclas["ArrowUp"] && jugador2.enSuelo) {
+            jugador2.vy = jugador2.fuerzaSalto;
+            jugador2.enSuelo = false;
+        }
+
+        if (teclas["ArrowDown"]) {
+            intentarActivarSuperTiro(jugador2);
+        }
+
+        if ((teclas["Enter"] || teclas["NumpadEnter"]) && !jugador2.pateando) {
+            jugador2.pateando = true;
+            jugador2.tiempoPatada = 12;
+            jugador2.expresion = "enojado";
+            jugador2.timerExpresion = 18;
+        }
     }
 
-    if (teclas["ArrowUp"] && jugador2.enSuelo) {
-        jugador2.vy = jugador2.fuerzaSalto;
-        jugador2.enSuelo = false;
-    }
-
-    if ((teclas["Enter"] || teclas["NumpadEnter"]) && !jugador2.pateando) {
-        jugador2.pateando = true;
-        jugador2.tiempoPatada = 12;
-    }
-
-    // Actualizar posiciones por gravedad y velocidad
     actualizarJugador(jugador1);
     actualizarJugador(jugador2);
     actualizarBalon();
 
-    // Resolver colisiones sólidas de forma natural
     resolverColisionEntreJugadores(jugador1, jugador2);
     resolverColisionJugadorBalon(jugador1);
     resolverColisionJugadorBalon(jugador2);
 
-    // Asegurar límites estrictos en la cancha y tope de velocidad
     limitarEntidadesEnCancha();
-
-    // Verificar goles y postes
     verificarEventosCancha();
-
     actualizarTelemetriaUI();
+}
+
+function finalizarPartido() {
+    MATRIZ_MARCADOR[3] = 1;
+    uiStatus.textContent = "FINALIZADO (Pulsa R)";
+    uiStatus.style.color = "#facc15";
+    AudioEngine.sonarSilbato(true);
 }
 
 function actualizarJugador(j) {
@@ -201,18 +366,44 @@ function actualizarJugador(j) {
         j.tiempoPatada--;
         if (j.tiempoPatada <= 0) j.pateando = false;
     }
+
+    if (j.timerExpresion > 0) {
+        j.timerExpresion--;
+        if (j.timerExpresion <= 0) j.expresion = "normal";
+    }
 }
 
 function actualizarBalon() {
-    balon.vy += FISICA.GRAVEDAD * 0.82;
-    balon.vx = MathEngine.aplicarFriccion(balon.vx, FISICA.FRICCION_AIRE);
+    // Guardar historial de posiciones para dibujar la estela (Trail)
+    balon.historialPosiciones.push({ x: balon.x, y: balon.y });
+    if (balon.historialPosiciones.length > 10) {
+        balon.historialPosiciones.shift();
+    }
 
-    balon.x += balon.vx;
-    balon.y += balon.vy;
-    balon.anguloGiro += balon.vx * 0.04;
+    if (balon.superTiroActivo === "senoidal") {
+        // Trayectoria trigonométrica: y(x) = y0 + A * sin(ω * dx)
+        balon.x += balon.vx;
+        const dx = Math.abs(balon.x - balon.superTiroOrigenX);
+        balon.y = MathEngine.calcularOndaSenoidal(balon.superTiroBaseY, 55, 0.035, dx);
+        balon.anguloGiro += balon.vx * 0.08;
+        uiFormulaTag.textContent = "ACTIVO: y(x) = y₀ + 55·sin(0.035x)";
+    } else if (balon.superTiroActivo === "bala") {
+        // Trayectoria rectilínea acelerada sin gravedad (g = 0)
+        balon.x += balon.vx;
+        balon.vy = 0;
+        balon.anguloGiro += balon.vx * 0.1;
+        uiFormulaTag.textContent = "ACTIVO: Rectilíneo Uniforme (g = 0)";
+    } else {
+        // Física parabólica estándar
+        balon.vy += FISICA.GRAVEDAD * 0.82;
+        balon.vx = MathEngine.aplicarFriccion(balon.vx, FISICA.FRICCION_AIRE);
+        balon.x += balon.vx;
+        balon.y += balon.vy;
+        balon.anguloGiro += balon.vx * 0.04;
+        uiFormulaTag.textContent = "Física Estándar: y(t) = y₀ + vᵧt - ½gt²";
+    }
 }
 
-// Colisión física sólida entre Jugador 1 y Jugador 2
 function resolverColisionEntreJugadores(j1, j2) {
     const dist = MathEngine.distanciaEuclidiana(j1.x, j1.y, j2.x, j2.y);
     const minDist = j1.radioCabeza + j2.radioCabeza;
@@ -243,44 +434,45 @@ function resolverColisionEntreJugadores(j1, j2) {
     }
 }
 
-// Colisión calibrada Jugador - Balón (sin efecto resorte loco)
 function resolverColisionJugadorBalon(j) {
-    // 1. Contacto con el cuerpo / cabeza (Conducción y cabezazo proporcional)
+    // 1. Contacto con la cabeza
     const distCabeza = MathEngine.distanciaEuclidiana(j.x, j.y, balon.x, balon.y);
     const sumaRadios = j.radioCabeza + balon.radio;
 
     if (distCabeza <= sumaRadios) {
+        // Si el rival ataja un Super Tiro, se desactiva el efecto especial
+        if (balon.superTiroActivo && balon.superTiroDueno !== j.id) {
+            balon.superTiroActivo = null;
+        }
+
         const angulo = MathEngine.calcularAnguloImpacto(j.x, j.y, balon.x, balon.y);
         balon.ultimoAnguloImpacto = angulo;
 
-        // Separar exactamente hasta el borde sin empujón artificial
         const solapamiento = sumaRadios - distCabeza + 0.5;
         balon.x += Math.cos(angulo) * solapamiento;
         balon.y += Math.sin(angulo) * solapamiento;
 
-        // Calcular velocidad relativa del choque
         const relVx = balon.vx - j.vx;
         const relVy = balon.vy - j.vy;
         const normalX = Math.cos(angulo);
         const normalY = Math.sin(angulo);
-
-        // Producto punto para saber con qué fuerza se acercaban
         const velocidadImpacto = relVx * normalX + relVy * normalY;
 
-        // Solo aplicar rebote si realmente iban chocando entre sí
         if (velocidadImpacto < 0) {
-            // Si el jugador está saltando (en el aire), el cabezazo tiene más fuerza
             const elasticidad = j.enSuelo ? 0.55 : 0.85;
             const impulso = -(1 + elasticidad) * velocidadImpacto;
 
             balon.vx += impulso * normalX + j.vx * 0.45;
             balon.vy += impulso * normalY + j.vy * 0.35;
 
-            // Si el balón estaba rodando en el suelo y el jugador lo empuja caminando
             if (j.enSuelo && balon.y + balon.radio >= FISICA.SUELO_Y - 4) {
                 balon.vx = j.vx * 1.25;
-                balon.vy = Math.min(balon.vy, -1.8); // Pequeño bote controlable para driblar
+                balon.vy = Math.min(balon.vy, -1.8);
             }
+
+            // Cargar energía por tocar el balón
+            j.cargarEnergia(8);
+            actualizarBarrasEnergiaUI();
 
             if (Math.abs(velocidadImpacto) > 2.5 && cooldownSonidoGolpe === 0) {
                 AudioEngine.sonarGolpe(false);
@@ -289,14 +481,14 @@ function resolverColisionJugadorBalon(j) {
         }
     }
 
-    // 2. Remate intencional con el botín (Tecla Espacio o Enter)
+    // 2. Remate con el botín
     if (j.pateando) {
         const pieX = j.x + j.mirada * 28;
         const pieY = j.y + 20;
         const distPie = MathEngine.distanciaEuclidiana(pieX, pieY, balon.x, balon.y);
 
         if (distPie <= 25 + balon.radio) {
-            // Ángulo controlado de 28 grados hacia el arco rival
+            balon.superTiroActivo = null;
             const anguloRemate = j.mirada === 1 ? -0.48 : Math.PI + 0.48;
             balon.ultimoAnguloImpacto = anguloRemate;
 
@@ -304,22 +496,25 @@ function resolverColisionJugadorBalon(j) {
             balon.vx = vectorRemate.vx;
             balon.vy = vectorRemate.vy;
             j.pateando = false;
+
+            j.cargarEnergia(15);
+            actualizarBarrasEnergiaUI();
             AudioEngine.sonarGolpe(true);
         }
     }
 }
 
-// Límites estrictos y tope de velocidad
 function limitarEntidadesEnCancha() {
-    // Tope de velocidad máxima para que el balón nunca se descontrole
-    const rapidezActual = Math.hypot(balon.vx, balon.vy);
-    if (rapidezActual > VEL_MAXIMA_BALON) {
-        const factor = VEL_MAXIMA_BALON / rapidezActual;
-        balon.vx *= factor;
-        balon.vy *= factor;
+    // No limitar velocidad si está en modo Tiro Bala (va a 21 px/frame)
+    if (balon.superTiroActivo !== "bala") {
+        const rapidezActual = Math.hypot(balon.vx, balon.vy);
+        if (rapidezActual > VEL_MAXIMA_BALON) {
+            const factor = VEL_MAXIMA_BALON / rapidezActual;
+            balon.vx *= factor;
+            balon.vy *= factor;
+        }
     }
 
-    // Jugadores dentro de la cancha
     [jugador1, jugador2].forEach((j) => {
         if (j.y + j.radioCabeza >= FISICA.SUELO_Y) {
             j.y = FISICA.SUELO_Y - j.radioCabeza;
@@ -340,19 +535,19 @@ function limitarEntidadesEnCancha() {
         }
     });
 
-    // Suelo estricto para el balón
     if (balon.y + balon.radio >= FISICA.SUELO_Y) {
         balon.y = FISICA.SUELO_Y - balon.radio;
+        balon.superTiroActivo = null;
         if (balon.vy > 0) {
-            balon.vy = -balon.vy * 0.72; // Rebote realista en césped
+            balon.vy = -balon.vy * 0.72;
             if (Math.abs(balon.vy) < 1.1) balon.vy = 0;
         }
         balon.vx = MathEngine.aplicarFriccion(balon.vx, 0.94);
     }
 
-    // Techo para el balón
     if (balon.y - balon.radio <= 0) {
         balon.y = balon.radio;
+        balon.superTiroActivo = null;
         if (balon.vy < 0) balon.vy = -balon.vy * 0.65;
     }
 }
@@ -364,24 +559,26 @@ function verificarEventosCancha() {
 
     // Travesaño izquierdo
     if (balon.x - balon.radio < xArcoIzq && Math.abs(balon.y - yTravesano) < balon.radio + 6) {
+        balon.superTiroActivo = null;
         balon.vy = -Math.abs(balon.vy) * 0.75;
         balon.vx = Math.abs(balon.vx) * 0.75 + 1.5;
         AudioEngine.sonarPoste();
     }
     // Travesaño derecho
     if (balon.x + balon.radio > xArcoDer && Math.abs(balon.y - yTravesano) < balon.radio + 6) {
+        balon.superTiroActivo = null;
         balon.vy = -Math.abs(balon.vy) * 0.75;
         balon.vx = -Math.abs(balon.vx) * 0.75 - 1.5;
         AudioEngine.sonarPoste();
     }
 
-    // Detección de GOL en Arco Izquierdo (Punto para J2)
+    // GOL en Arco Izquierdo (Anota J2)
     if (balon.x - balon.radio <= xArcoIzq - 15 && balon.y > yTravesano) {
         anotarGol(2, balon.x, balon.y);
         return;
     }
 
-    // Detección de GOL en Arco Derecho (Punto para J1)
+    // GOL en Arco Derecho (Anota J1)
     if (balon.x + balon.radio >= xArcoDer + 15 && balon.y > yTravesano) {
         anotarGol(1, balon.x, balon.y);
         return;
@@ -390,32 +587,68 @@ function verificarEventosCancha() {
     // Paredes laterales sobre los arcos
     if (balon.x - balon.radio <= 0 && balon.y <= yTravesano) {
         balon.x = balon.radio;
+        balon.superTiroActivo = null;
         balon.vx = -balon.vx * 0.75;
     }
     if (balon.x + balon.radio >= canvas.width && balon.y <= yTravesano) {
         balon.x = canvas.width - balon.radio;
+        balon.superTiroActivo = null;
         balon.vx = -balon.vx * 0.75;
     }
 }
 
 function anotarGol(jugadorQueAnoto, xGol, yGol) {
     ultimoGoleador = jugadorQueAnoto;
-    cameraShake = 20;
+    cameraShake = 22;
 
     if (jugadorQueAnoto === 1) {
         MATRIZ_MARCADOR[0]++;
         uiScore1.textContent = MATRIZ_MARCADOR[0];
-        generarExplosionConfeti(xGol, yGol, "#2563eb");
+        generarExplosionConfeti(xGol, yGol, jugador1.colorCamiseta);
+        // El que recibe el gol gana +35% de energía para remontar
+        jugador2.cargarEnergia(35);
+        jugador2.expresion = "sorpresa";
+        jugador2.timerExpresion = 95;
+        AudioEngine.celebrarGol(jugador1.nombreEquipo);
         balon.reiniciar(1);
     } else {
         MATRIZ_MARCADOR[1]++;
         uiScore2.textContent = MATRIZ_MARCADOR[1];
-        generarExplosionConfeti(xGol, yGol, "#dc2626");
+        generarExplosionConfeti(xGol, yGol, jugador2.colorCamiseta);
+        jugador1.cargarEnergia(35);
+        jugador1.expresion = "sorpresa";
+        jugador1.timerExpresion = 95;
+        AudioEngine.celebrarGol(jugador2.nombreEquipo);
         balon.reiniciar(-1);
     }
 
-    AudioEngine.celebrarGol(jugadorQueAnoto);
+    actualizarBarrasEnergiaUI();
     mensajeGolTimer = 95;
+}
+
+function actualizarBarrasEnergiaUI() {
+    uiPowerBar1.style.width = `${jugador1.energia}%`;
+    uiPowerBar2.style.width = `${jugador2.energia}%`;
+
+    if (jugador1.energia >= 100) {
+        uiPowerBar1.classList.add("ready");
+        uiPowerLabel1.textContent = "🔥 ¡SUPER TIRO LISTO (Tecla S)!";
+        uiPowerLabel1.style.color = "#facc15";
+    } else {
+        uiPowerBar1.classList.remove("ready");
+        uiPowerLabel1.textContent = `ENERGÍA: ${jugador1.energia}%`;
+        uiPowerLabel1.style.color = "#94a3b8";
+    }
+
+    if (jugador2.energia >= 100) {
+        uiPowerBar2.classList.add("ready");
+        uiPowerLabel2.textContent = modoCPU ? "🔥 ¡CPU SUPER TIRO LISTO!" : "🔥 ¡SUPER TIRO LISTO (Flecha ↓)!";
+        uiPowerLabel2.style.color = "#facc15";
+    } else {
+        uiPowerBar2.classList.remove("ready");
+        uiPowerLabel2.textContent = `ENERGÍA: ${jugador2.energia}%`;
+        uiPowerLabel2.style.color = "#94a3b8";
+    }
 }
 
 function actualizarRelojUI() {
@@ -434,7 +667,7 @@ function actualizarTelemetriaUI() {
     uiEuclideanDist.textContent = `${d1} px / ${d2} px`;
 }
 
-// Fase 2 del Game Loop: Renderizado en HTML5 Canvas
+// --- FASE 2 DEL GAME LOOP: RENDERIZADO CANVAS ---
 function dibujar() {
     ctx.save();
 
@@ -444,7 +677,7 @@ function dibujar() {
         ctx.translate(dx, dy);
     }
 
-    // 1. Cielo / Fondo de estadio
+    // 1. Cielo / Estadio
     const gradCielo = ctx.createLinearGradient(0, 0, 0, FISICA.SUELO_Y);
     gradCielo.addColorStop(0, "#0c4a6e");
     gradCielo.addColorStop(1, "#0369a1");
@@ -473,14 +706,15 @@ function dibujar() {
     dibujarArco(MATRIZ_ARCOS[0], true);
     dibujarArco(MATRIZ_ARCOS[1], false);
 
-    // 4. Jugadores
+    // 4. Jugadores (con aura si tienen energía al 100%)
     dibujarJugador(jugador1);
     dibujarJugador(jugador2);
 
-    // 5. Balón
+    // 5. Estela del Balón + Balón
+    dibujarEstelaBalon();
     dibujarBalon();
 
-    // 6. Confeti de celebración
+    // 6. Confeti
     for (const p of particulasConfeti) {
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x, p.y, p.tamano, p.tamano);
@@ -505,18 +739,15 @@ function dibujar() {
         ctx.textAlign = "center";
         ctx.lineWidth = 8;
         ctx.strokeStyle = "#0f172a";
-        ctx.strokeText("¡GOOOOOL!", 0, 0);
+        ctx.strokeText(MATRIZ_MARCADOR[4] === 1 ? "¡GOL DE ORO!" : "¡GOOOOOL!", 0, 0);
 
-        ctx.fillStyle = ultimoGoleador === 1 ? "#38bdf8" : "#f87171";
-        ctx.fillText("¡GOOOOOL!", 0, 0);
+        ctx.fillStyle = ultimoGoleador === 1 ? jugador1.colorCamiseta : jugador2.colorCamiseta;
+        ctx.fillText(MATRIZ_MARCADOR[4] === 1 ? "¡GOL DE ORO!" : "¡GOOOOOL!", 0, 0);
 
         ctx.font = "bold 24px 'Segoe UI', sans-serif";
         ctx.fillStyle = "#facc15";
-        ctx.fillText(
-            ultimoGoleador === 1 ? "ANOTA J1 (CHILE)" : "ANOTA J2 (RIVAL)",
-            0,
-            42
-        );
+        const nombreAnotador = ultimoGoleador === 1 ? jugador1.nombreEquipo : jugador2.nombreEquipo;
+        ctx.fillText(`ANOTA ${nombreAnotador}`, 0, 42);
         ctx.restore();
     }
 
@@ -562,6 +793,18 @@ function dibujarArco(datosArco, esIzquierdo) {
 }
 
 function dibujarJugador(j) {
+    // Aura dorada si tiene el Super Tiro al 100%
+    if (j.energia >= 100) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(250, 204, 21, 0.75)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(j.x, j.y, j.radioCabeza + 6 + Math.sin(performance.now() * 0.01) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Botín
     ctx.save();
     const pieX = j.pateando ? j.x + j.mirada * 32 : j.x + j.mirada * 10;
     const pieY = j.pateando ? j.y + 18 : j.y + 28;
@@ -571,6 +814,7 @@ function dibujarJugador(j) {
     ctx.fill();
     ctx.restore();
 
+    // Cabeza
     ctx.fillStyle = "#fed7aa";
     ctx.beginPath();
     ctx.arc(j.x, j.y, j.radioCabeza, 0, Math.PI * 2);
@@ -579,22 +823,68 @@ function dibujarJugador(j) {
     ctx.strokeStyle = "#1e293b";
     ctx.stroke();
 
+    // Camiseta bicolor según selección elegida
     ctx.fillStyle = j.colorCamiseta;
     ctx.beginPath();
     ctx.arc(j.x, j.y, j.radioCabeza, 0.15 * Math.PI, 0.85 * Math.PI);
     ctx.fill();
 
+    ctx.fillStyle = j.colorDetalle;
+    ctx.beginPath();
+    ctx.arc(j.x, j.y, j.radioCabeza, 0.35 * Math.PI, 0.65 * Math.PI);
+    ctx.fill();
+
+    // Ojo dinámico que sigue al balón usando Math.atan2
     const ojoX = j.x + j.mirada * 14;
     const ojoY = j.y - 6;
+    const anguloMiradaBalon = Math.atan2(balon.y - ojoY, balon.x - ojoX);
+
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(ojoX, ojoY, 7, 0, Math.PI * 2);
+    ctx.arc(ojoX, ojoY, j.expresion === "sorpresa" ? 8.5 : 7, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = "#0f172a";
     ctx.beginPath();
-    ctx.arc(ojoX + j.mirada * 2.5, ojoY, 3.5, 0, Math.PI * 2);
+    ctx.arc(
+        ojoX + Math.cos(anguloMiradaBalon) * 3,
+        ojoY + Math.sin(anguloMiradaBalon) * 3,
+        j.expresion === "sorpresa" ? 2.5 : 3.5,
+        0,
+        Math.PI * 2
+    );
     ctx.fill();
+
+    // Ceja dinámica según expresión ("enojado" al patear)
+    if (j.expresion === "enojado") {
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(ojoX - 6, ojoY - 10);
+        ctx.lineTo(ojoX + 6, ojoY - 6);
+        ctx.stroke();
+    }
+}
+
+function dibujarEstelaBalon() {
+    const rapidez = Math.hypot(balon.vx, balon.vy);
+    if (rapidez < 9 && !balon.superTiroActivo) return;
+
+    for (let i = 0; i < balon.historialPosiciones.length; i++) {
+        const pos = balon.historialPosiciones[i];
+        const ratio = (i + 1) / balon.historialPosiciones.length;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, balon.radio * ratio * 0.85, 0, Math.PI * 2);
+
+        if (balon.superTiroActivo === "senoidal") {
+            ctx.fillStyle = `rgba(56, 189, 248, ${ratio * 0.45})`; // Estela celeste onda
+        } else if (balon.superTiroActivo === "bala") {
+            ctx.fillStyle = `rgba(239, 68, 68, ${ratio * 0.55})`;  // Estela fuego bala
+        } else {
+            ctx.fillStyle = `rgba(250, 204, 21, ${ratio * 0.3})`;  // Estela dorada remate fuerte
+        }
+        ctx.fill();
+    }
 }
 
 function dibujarBalon() {
@@ -602,7 +892,13 @@ function dibujarBalon() {
     ctx.translate(balon.x, balon.y);
     ctx.rotate(balon.anguloGiro);
 
-    ctx.fillStyle = "#ffffff";
+    // Aura de fuego/energía si es Super Tiro
+    if (balon.superTiroActivo) {
+        ctx.shadowColor = balon.superTiroActivo === "senoidal" ? "#38bdf8" : "#ef4444";
+        ctx.shadowBlur = 18;
+    }
+
+    ctx.fillStyle = balon.superTiroActivo === "bala" ? "#fef08a" : "#ffffff";
     ctx.beginPath();
     ctx.arc(0, 0, balon.radio, 0, Math.PI * 2);
     ctx.fill();

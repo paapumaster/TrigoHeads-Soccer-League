@@ -1,6 +1,6 @@
 /**
  * Módulo Matemático - TrigoHeads: Soccer League
- * Implementa: Distancia Euclidiana, Trigonometría Vectorial y Funciones de Amortiguación.
+ * Implementa: Distancia Euclidiana, Trigonometría Vectorial, Onda Senoidal y Amortiguación.
  */
 
 const MathEngine = {
@@ -27,12 +27,18 @@ const MathEngine = {
         };
     },
 
-    // 4. Conversión de radianes a grados sexagesimales para visualización
+    // 4. Función Trigonométrica de Onda Senoidal para el Super Tiro Especial
+    // Fórmula: y(x) = y0 + A * sin(ω * desplazamientoX)
+    calcularOndaSenoidal(yBase, amplitud, frecuenciaAngular, desplazamientoX) {
+        return yBase + amplitud * Math.sin(frecuenciaAngular * desplazamientoX);
+    },
+
+    // 5. Conversión de radianes a grados sexagesimales para visualización
     radianesAGrados(radianes) {
         return Math.round((radianes * 180) / Math.PI);
     },
 
-    // 5. Función lineal de fricción / amortiguación
+    // 6. Función lineal de fricción / amortiguación
     // Fórmula: v_nueva = v_actual * mu (donde 0 < mu < 1)
     aplicarFriccion(velocidad, factorMu) {
         const nuevaVel = velocidad * factorMu;

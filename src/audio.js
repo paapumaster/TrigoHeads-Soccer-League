@@ -1,6 +1,5 @@
 /**
- * Módulo de Audio Procedural y Relator - TrigoHeads: Soccer League
- * Utiliza Web Audio API para efectos de sonido y SpeechSynthesis para gritos de gol.
+ * Módulo de Audio Procedural y Relator Dinámico - TrigoHeads: Soccer League
  */
 
 const AudioEngine = {
@@ -15,14 +14,13 @@ const AudioEngine = {
         }
     },
 
-    // Sonido seco de golpeo (cabezazo o patada)
     sonarGolpe(esPatadaFuerte = false) {
         this.init();
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(esPatadaFuerte ? 180 : 130, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(esPatadaFuerte ? 190 : 130, this.ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.12);
 
         gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
@@ -34,7 +32,25 @@ const AudioEngine = {
         osc.stop(this.ctx.currentTime + 0.12);
     },
 
-    // Sonido metálico al pegar en el travesaño
+    // Efecto láser/energía al activar el Super Tiro Especial
+    sonarSuperTiro() {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(980, this.ctx.currentTime + 0.28);
+
+        gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.3);
+    },
+
     sonarPoste() {
         this.init();
         const osc = this.ctx.createOscillator();
@@ -53,7 +69,6 @@ const AudioEngine = {
         osc.stop(this.ctx.currentTime + 0.25);
     },
 
-    // Silbato inicial / final del árbitro
     sonarSilbato(largo = false) {
         this.init();
         const duracion = largo ? 0.65 : 0.28;
@@ -62,7 +77,6 @@ const AudioEngine = {
 
         osc.type = "sine";
         osc.frequency.setValueAtTime(2800, this.ctx.currentTime);
-        // Efecto trino del silbato
         osc.frequency.setValueAtTime(2950, this.ctx.currentTime + 0.05);
         osc.frequency.setValueAtTime(2800, this.ctx.currentTime + 0.1);
 
@@ -75,11 +89,9 @@ const AudioEngine = {
         osc.stop(this.ctx.currentTime + duracion);
     },
 
-    // Fanfarria de estadio + Grito de relato "¡GOOOOL!"
-    celebrarGol(equipo) {
+    celebrarGol(nombreSeleccion) {
         this.init();
 
-        // 1. Acorde de fanfarria (Do - Mi - Sol - Do alto)
         const notas = [523.25, 659.25, 783.99, 1046.50];
         notas.forEach((freq, i) => {
             const osc = this.ctx.createOscillator();
@@ -96,12 +108,9 @@ const AudioEngine = {
             osc.stop(this.ctx.currentTime + i * 0.08 + 0.45);
         });
 
-        // 2. Grito de relator con síntesis de voz en español
         if ("speechSynthesis" in window) {
             window.speechSynthesis.cancel();
-            const relato = new SpeechSynthesisUtterance(
-                equipo === 1 ? "¡Goooool de Chile!" : "¡Goooool del rival!"
-            );
+            const relato = new SpeechSynthesisUtterance(`¡Goooool de ${nombreSeleccion}!`);
             relato.lang = "es-ES";
             relato.rate = 1.15;
             relato.pitch = 1.35;

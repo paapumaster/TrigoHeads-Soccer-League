@@ -13,32 +13,99 @@
     </header>
 
     <main class="game-container">
-        <!-- Marcador Superior -->
+        <!-- Marcador Superior + Barras de Poder Especial -->
         <div class="scoreboard">
-            <div class="team team-1">
-                <span class="badge blue">J1 (Chile)</span>
-                <span id="score1" class="score">0</span>
+            <div class="team-block">
+                <div class="team team-1">
+                    <span id="badge1" class="badge" style="background-color: #2563eb;">🇨🇱 CHILE (J1)</span>
+                    <span id="score1" class="score">0</span>
+                </div>
+                <div class="power-wrapper">
+                    <div class="power-bar-bg">
+                        <div id="powerBar1" class="power-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <span id="powerLabel1" class="power-text">ENERGÍA: 0%</span>
+                </div>
             </div>
+
             <div class="timer-box">
                 <span id="timer">01:30</span>
-                <small id="gameStatus">EN JUEGO</small>
+                <small id="gameStatus">CONFIGURANDO</small>
+                <button id="openMenuBtn" class="btn-mini">⚙️ Cambiar Equipos / Modo</button>
             </div>
-            <div class="team team-2">
-                <span id="score2" class="score">0</span>
-                <span class="badge red">J2 (Rival)</span>
+
+            <div class="team-block align-right">
+                <div class="team team-2">
+                    <span id="score2" class="score">0</span>
+                    <span id="badge2" class="badge" style="background-color: #38bdf8; color: #0f172a;">🇦🇷 ARGENTINA (CPU)</span>
+                </div>
+                <div class="power-wrapper">
+                    <div class="power-bar-bg">
+                        <div id="powerBar2" class="power-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <span id="powerLabel2" class="power-text">ENERGÍA: 0%</span>
+                </div>
             </div>
         </div>
 
-        <!-- Lienzo del Juego (900x500 px) -->
+        <!-- Lienzo del Juego + Pantalla Inicial de Selección -->
         <div class="canvas-wrapper">
             <canvas id="gameCanvas" width="900" height="500"></canvas>
+
+            <!-- Pantalla Inicial de Configuración (Overlay) -->
+            <div id="setupOverlay" class="setup-overlay">
+                <div class="setup-card">
+                    <h2>🏆 Configuración del Partido</h2>
+                    
+                    <div class="mode-selector">
+                        <label>Modo de Juego:</label>
+                        <div class="mode-buttons">
+                            <button id="btnModeCPU" class="mode-btn active">🤖 1 Jugador vs CPU</button>
+                            <button id="btnMode2P" class="mode-btn">🎮 2 Jugadores (Local)</button>
+                        </div>
+                    </div>
+
+                    <div class="teams-selector-grid">
+                        <!-- Selección J1 -->
+                        <div class="player-select-box">
+                            <h3>Jugador 1 (Izquierda)</h3>
+                            <select id="selectTeam1" class="team-dropdown">
+                                <option value="chile" selected>🇨🇱 Chile — Poder: Onda Senoidal y = A·sin(ωx)</option>
+                                <option value="brasil">🇧🇷 Brasil — Poder: Onda Senoidal y = A·sin(ωx)</option>
+                                <option value="alemania">🇩🇪 Alemania — Poder: Tiro Bala (g = 0)</option>
+                                <option value="argentina">🇦🇷 Argentina — Poder: Onda Senoidal y = A·sin(ωx)</option>
+                                <option value="japon">🇯🇵 Japón — Poder: Tiro Bala (g = 0)</option>
+                            </select>
+                            <p id="powerDesc1" class="power-desc">Trayectoria trigonométrica oscilante difícil de atajar.</p>
+                        </div>
+
+                        <!-- Selección J2 / CPU -->
+                        <div class="player-select-box">
+                            <h3 id="titleSelect2">Rival / CPU (Derecha)</h3>
+                            <select id="selectTeam2" class="team-dropdown">
+                                <option value="argentina" selected>🇦🇷 Argentina — Poder: Onda Senoidal y = A·sin(ωx)</option>
+                                <option value="alemania">🇩🇪 Alemania — Poder: Tiro Bala (g = 0)</option>
+                                <option value="brasil">🇧🇷 Brasil — Poder: Onda Senoidal y = A·sin(ωx)</option>
+                                <option value="japon">🇯🇵 Japón — Poder: Tiro Bala (g = 0)</option>
+                                <option value="chile">🇨🇱 Chile — Poder: Onda Senoidal y = A·sin(ωx)</option>
+                            </select>
+                            <p id="powerDesc2" class="power-desc">Trayectoria trigonométrica oscilante difícil de atajar.</p>
+                        </div>
+                    </div>
+
+                    <button id="startMatchBtn" class="btn-start">⚽ ¡INICIAR PARTIDO!</button>
+                </div>
+            </div>
         </div>
 
         <!-- Panel de Telemetría Matemática en Tiempo Real -->
         <section class="math-telemetry">
             <div class="telemetry-header">
                 <h3>📐 Telemetría Matemática en Vivo</h3>
-                <button id="toggleDebugBtn" class="btn-debug">Vectores en Cancha (Tecla M): OFF</button>
+                <div class="telemetry-actions">
+                    <span id="activeFormulaTag" class="formula-tag">Física Estándar: y(t) = y₀ + vᵧt - ½gt²</span>
+                    <button id="toggleDebugBtn" class="btn-debug">Vectores (Tecla M): OFF</button>
+                </div>
             </div>
             <div class="telemetry-grid">
                 <div class="metric-card">
@@ -62,16 +129,16 @@
 
         <!-- Controles -->
         <footer class="controls-bar">
-            <div><strong>Jugador 1:</strong> W (Saltar) | A / D (Mover) | Espacio (Patear)</div>
-            <div><strong>Jugador 2:</strong> ↑ (Saltar) | ← / → (Mover) | Enter (Patear)</div>
-            <div><strong>Extra:</strong> Tecla <b>M</b> (Vectores) | Tecla <b>R</b> (Reiniciar)</div>
+            <div><strong>J1:</strong> W (Saltar) | A/D (Mover) | Espacio (Patear) | <b>S (Super Tiro)</b></div>
+            <div><strong>J2:</strong> ↑ (Saltar) | ←/→ (Mover) | Enter (Patear) | <b>↓ (Super Tiro)</b></div>
+            <div><strong>Sistema:</strong> <b>M</b> (Vectores) | <b>R</b> (Reiniciar)</div>
         </footer>
     </main>
 
     <!-- Módulos JavaScript en orden de dependencia -->
     <script src="src/math.js"></script>
     <script src="src/entities.js"></script>
-    <script src="src/game.js"></script>
     <script src="src/audio.js"></script>
+    <script src="src/game.js"></script>
 </body>
 </html>
