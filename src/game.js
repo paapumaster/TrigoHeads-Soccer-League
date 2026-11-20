@@ -1,5 +1,6 @@
 /**
  * Motor Principal y Game Loop a 60 FPS - TrigoHeads: Soccer League
+ * Física calibrada: Conducción suave, transferencia de momento realista y tope de velocidad.
  */
 
 const canvas = document.getElementById("gameCanvas");
@@ -24,11 +25,14 @@ let ultimoGoleador = 1;
 let cameraShake = 0;
 let particulasConfeti = [];
 let ultimoSegundo = performance.now();
+let cooldownSonidoGolpe = 0;
+
+const VEL_MAXIMA_BALON = 17.5;
 
 // Listeners de teclado (Input Handling)
 window.addEventListener("keydown", (e) => {
     teclas[e.code] = true;
-    AudioEngine.init(); // Activa el audio con la primera tecla
+    AudioEngine.init();
 
     if (e.code === "KeyM") {
         toggleModoDebug();
@@ -86,7 +90,7 @@ function generarExplosionConfeti(xOrigen, yOrigen, colorPrincipal) {
 function actualizarConfeti() {
     for (let i = particulasConfeti.length - 1; i >= 0; i--) {
         const p = particulasConfeti[i];
-        p.vy += 0.25; // Gravedad parabólica
+        p.vy += 0.25;
         p.vx *= 0.98;
         p.x += p.vx;
         p.y += p.vy;
@@ -101,6 +105,7 @@ function actualizarConfeti() {
 function actualizar() {
     actualizarConfeti();
     if (cameraShake > 0) cameraShake--;
+    if (cooldownSonidoGolpe > 0) cooldownSonidoGolpe--;
 
     // Control del reloj del partido
     const ahora = performance.now();
@@ -168,12 +173,21 @@ function actualizar() {
         jugador2.tiempoPatada = 12;
     }
 
+    // Actualizar posiciones por gravedad y velocidad
     actualizarJugador(jugador1);
     actualizarJugador(jugador2);
     actualizarBalon();
 
+    // Resolver colisiones sólidas de forma natural
+    resolverColisionEntreJugadores(jugador1, jugador2);
     resolverColisionJugadorBalon(jugador1);
     resolverColisionJugadorBalon(jugador2);
+
+    // Asegurar límites estrictos en la cancha y tope de velocidad
+    limitarEntidadesEnCancha();
+
+    // Verificar goles y postes
+    verificarEventosCancha();
 
     actualizarTelemetriaUI();
 }
@@ -183,15 +197,6 @@ function actualizarJugador(j) {
     j.x += j.vx;
     j.y += j.vy;
 
-    if (j.y + j.radioCabeza >= FISICA.SUELO_Y) {
-        j.y = FISICA.SUELO_Y - j.radioCabeza;
-        j.vy = 0;
-        j.enSuelo = true;
-    }
-
-    if (j.x - j.radioCabeza < 20) j.x = 20 + j.radioCabeza;
-    if (j.x + j.radioCabeza > canvas.width - 20) j.x = canvas.width - 20 - j.radioCabeza;
-
     if (j.pateando) {
         j.tiempoPatada--;
         if (j.tiempoPatada <= 0) j.pateando = false;
@@ -199,40 +204,174 @@ function actualizarJugador(j) {
 }
 
 function actualizarBalon() {
-    balon.vy += FISICA.GRAVEDAD * 0.85;
+    balon.vy += FISICA.GRAVEDAD * 0.82;
     balon.vx = MathEngine.aplicarFriccion(balon.vx, FISICA.FRICCION_AIRE);
 
     balon.x += balon.vx;
     balon.y += balon.vy;
     balon.anguloGiro += balon.vx * 0.04;
+}
 
-    // Rebote en el césped
+// Colisión física sólida entre Jugador 1 y Jugador 2
+function resolverColisionEntreJugadores(j1, j2) {
+    const dist = MathEngine.distanciaEuclidiana(j1.x, j1.y, j2.x, j2.y);
+    const minDist = j1.radioCabeza + j2.radioCabeza;
+
+    if (dist < minDist) {
+        const angulo = dist === 0 ? 0 : MathEngine.calcularAnguloImpacto(j1.x, j1.y, j2.x, j2.y);
+        const solapamiento = (minDist - dist) / 2;
+
+        const sepX = Math.cos(angulo) * solapamiento;
+        const sepY = Math.sin(angulo) * solapamiento;
+
+        j1.x -= sepX;
+        j1.y -= sepY;
+        j2.x += sepX;
+        j2.y += sepY;
+
+        const tempVx = j1.vx;
+        j1.vx = j2.vx * 0.5;
+        j2.vx = tempVx * 0.5;
+
+        if (j1.y < j2.y - 20 && j1.vy > 0) {
+            j1.vy = -5.5;
+            j1.enSuelo = false;
+        } else if (j2.y < j1.y - 20 && j2.vy > 0) {
+            j2.vy = -5.5;
+            j2.enSuelo = false;
+        }
+    }
+}
+
+// Colisión calibrada Jugador - Balón (sin efecto resorte loco)
+function resolverColisionJugadorBalon(j) {
+    // 1. Contacto con el cuerpo / cabeza (Conducción y cabezazo proporcional)
+    const distCabeza = MathEngine.distanciaEuclidiana(j.x, j.y, balon.x, balon.y);
+    const sumaRadios = j.radioCabeza + balon.radio;
+
+    if (distCabeza <= sumaRadios) {
+        const angulo = MathEngine.calcularAnguloImpacto(j.x, j.y, balon.x, balon.y);
+        balon.ultimoAnguloImpacto = angulo;
+
+        // Separar exactamente hasta el borde sin empujón artificial
+        const solapamiento = sumaRadios - distCabeza + 0.5;
+        balon.x += Math.cos(angulo) * solapamiento;
+        balon.y += Math.sin(angulo) * solapamiento;
+
+        // Calcular velocidad relativa del choque
+        const relVx = balon.vx - j.vx;
+        const relVy = balon.vy - j.vy;
+        const normalX = Math.cos(angulo);
+        const normalY = Math.sin(angulo);
+
+        // Producto punto para saber con qué fuerza se acercaban
+        const velocidadImpacto = relVx * normalX + relVy * normalY;
+
+        // Solo aplicar rebote si realmente iban chocando entre sí
+        if (velocidadImpacto < 0) {
+            // Si el jugador está saltando (en el aire), el cabezazo tiene más fuerza
+            const elasticidad = j.enSuelo ? 0.55 : 0.85;
+            const impulso = -(1 + elasticidad) * velocidadImpacto;
+
+            balon.vx += impulso * normalX + j.vx * 0.45;
+            balon.vy += impulso * normalY + j.vy * 0.35;
+
+            // Si el balón estaba rodando en el suelo y el jugador lo empuja caminando
+            if (j.enSuelo && balon.y + balon.radio >= FISICA.SUELO_Y - 4) {
+                balon.vx = j.vx * 1.25;
+                balon.vy = Math.min(balon.vy, -1.8); // Pequeño bote controlable para driblar
+            }
+
+            if (Math.abs(velocidadImpacto) > 2.5 && cooldownSonidoGolpe === 0) {
+                AudioEngine.sonarGolpe(false);
+                cooldownSonidoGolpe = 8;
+            }
+        }
+    }
+
+    // 2. Remate intencional con el botín (Tecla Espacio o Enter)
+    if (j.pateando) {
+        const pieX = j.x + j.mirada * 28;
+        const pieY = j.y + 20;
+        const distPie = MathEngine.distanciaEuclidiana(pieX, pieY, balon.x, balon.y);
+
+        if (distPie <= 25 + balon.radio) {
+            // Ángulo controlado de 28 grados hacia el arco rival
+            const anguloRemate = j.mirada === 1 ? -0.48 : Math.PI + 0.48;
+            balon.ultimoAnguloImpacto = anguloRemate;
+
+            const vectorRemate = MathEngine.descomponerVector(15.5, anguloRemate);
+            balon.vx = vectorRemate.vx;
+            balon.vy = vectorRemate.vy;
+            j.pateando = false;
+            AudioEngine.sonarGolpe(true);
+        }
+    }
+}
+
+// Límites estrictos y tope de velocidad
+function limitarEntidadesEnCancha() {
+    // Tope de velocidad máxima para que el balón nunca se descontrole
+    const rapidezActual = Math.hypot(balon.vx, balon.vy);
+    if (rapidezActual > VEL_MAXIMA_BALON) {
+        const factor = VEL_MAXIMA_BALON / rapidezActual;
+        balon.vx *= factor;
+        balon.vy *= factor;
+    }
+
+    // Jugadores dentro de la cancha
+    [jugador1, jugador2].forEach((j) => {
+        if (j.y + j.radioCabeza >= FISICA.SUELO_Y) {
+            j.y = FISICA.SUELO_Y - j.radioCabeza;
+            j.vy = 0;
+            j.enSuelo = true;
+        }
+        if (j.y - j.radioCabeza < 0) {
+            j.y = j.radioCabeza;
+            j.vy = 0;
+        }
+        if (j.x - j.radioCabeza < 20) {
+            j.x = 20 + j.radioCabeza;
+            j.vx = 0;
+        }
+        if (j.x + j.radioCabeza > canvas.width - 20) {
+            j.x = canvas.width - 20 - j.radioCabeza;
+            j.vx = 0;
+        }
+    });
+
+    // Suelo estricto para el balón
     if (balon.y + balon.radio >= FISICA.SUELO_Y) {
         balon.y = FISICA.SUELO_Y - balon.radio;
-        balon.vy = -balon.vy * FISICA.REBOTE_BALON;
-        balon.vx = MathEngine.aplicarFriccion(balon.vx, 0.92);
+        if (balon.vy > 0) {
+            balon.vy = -balon.vy * 0.72; // Rebote realista en césped
+            if (Math.abs(balon.vy) < 1.1) balon.vy = 0;
+        }
+        balon.vx = MathEngine.aplicarFriccion(balon.vx, 0.94);
     }
 
-    // Rebote en el techo
+    // Techo para el balón
     if (balon.y - balon.radio <= 0) {
         balon.y = balon.radio;
-        balon.vy = -balon.vy * 0.7;
+        if (balon.vy < 0) balon.vy = -balon.vy * 0.65;
     }
+}
 
+function verificarEventosCancha() {
     const yTravesano = MATRIZ_ARCOS[0][2];
     const xArcoIzq = MATRIZ_ARCOS[0][1];
     const xArcoDer = MATRIZ_ARCOS[1][0];
 
     // Travesaño izquierdo
     if (balon.x - balon.radio < xArcoIzq && Math.abs(balon.y - yTravesano) < balon.radio + 6) {
-        balon.vy = -Math.abs(balon.vy) * 0.8;
-        balon.vx = Math.abs(balon.vx) * 0.8 + 2;
+        balon.vy = -Math.abs(balon.vy) * 0.75;
+        balon.vx = Math.abs(balon.vx) * 0.75 + 1.5;
         AudioEngine.sonarPoste();
     }
     // Travesaño derecho
     if (balon.x + balon.radio > xArcoDer && Math.abs(balon.y - yTravesano) < balon.radio + 6) {
-        balon.vy = -Math.abs(balon.vy) * 0.8;
-        balon.vx = -Math.abs(balon.vx) * 0.8 - 2;
+        balon.vy = -Math.abs(balon.vy) * 0.75;
+        balon.vx = -Math.abs(balon.vx) * 0.75 - 1.5;
         AudioEngine.sonarPoste();
     }
 
@@ -251,56 +390,17 @@ function actualizarBalon() {
     // Paredes laterales sobre los arcos
     if (balon.x - balon.radio <= 0 && balon.y <= yTravesano) {
         balon.x = balon.radio;
-        balon.vx = -balon.vx * 0.8;
+        balon.vx = -balon.vx * 0.75;
     }
     if (balon.x + balon.radio >= canvas.width && balon.y <= yTravesano) {
         balon.x = canvas.width - balon.radio;
-        balon.vx = -balon.vx * 0.8;
-    }
-}
-
-function resolverColisionJugadorBalon(j) {
-    // 1. Cabezazo
-    const distCabeza = MathEngine.distanciaEuclidiana(j.x, j.y, balon.x, balon.y);
-    const sumaRadios = j.radioCabeza + balon.radio;
-
-    if (distCabeza <= sumaRadios) {
-        const angulo = MathEngine.calcularAnguloImpacto(j.x, j.y, balon.x, balon.y);
-        balon.ultimoAnguloImpacto = angulo;
-
-        const solapamiento = sumaRadios - distCabeza + 1;
-        balon.x += Math.cos(angulo) * solapamiento;
-        balon.y += Math.sin(angulo) * solapamiento;
-
-        const fuerzaCabezazo = 10.5 + Math.abs(j.vx) * 0.6;
-        const vector = MathEngine.descomponerVector(fuerzaCabezazo, angulo);
-        balon.vx = vector.vx;
-        balon.vy = vector.vy - 2.5;
-        AudioEngine.sonarGolpe(false);
-    }
-
-    // 2. Patada
-    if (j.pateando) {
-        const pieX = j.x + j.mirada * 28;
-        const pieY = j.y + 22;
-        const distPie = MathEngine.distanciaEuclidiana(pieX, pieY, balon.x, balon.y);
-
-        if (distPie <= 24 + balon.radio) {
-            const anguloRemate = j.mirada === 1 ? -0.55 : Math.PI + 0.55;
-            balon.ultimoAnguloImpacto = anguloRemate;
-
-            const vectorRemate = MathEngine.descomponerVector(16.5, anguloRemate);
-            balon.vx = vectorRemate.vx;
-            balon.vy = vectorRemate.vy;
-            j.pateando = false;
-            AudioEngine.sonarGolpe(true);
-        }
+        balon.vx = -balon.vx * 0.75;
     }
 }
 
 function anotarGol(jugadorQueAnoto, xGol, yGol) {
     ultimoGoleador = jugadorQueAnoto;
-    cameraShake = 20; // Temblor de cámara durante 20 fotogramas
+    cameraShake = 20;
 
     if (jugadorQueAnoto === 1) {
         MATRIZ_MARCADOR[0]++;
@@ -315,7 +415,7 @@ function anotarGol(jugadorQueAnoto, xGol, yGol) {
     }
 
     AudioEngine.celebrarGol(jugadorQueAnoto);
-    mensajeGolTimer = 95; // Pausa de ~1.5 segundos celebrando el gol
+    mensajeGolTimer = 95;
 }
 
 function actualizarRelojUI() {
@@ -338,7 +438,6 @@ function actualizarTelemetriaUI() {
 function dibujar() {
     ctx.save();
 
-    // Aplicar temblor de cámara (Screen Shake) al hacer gol
     if (cameraShake > 0) {
         const dx = (Math.random() - 0.5) * 14;
         const dy = (Math.random() - 0.5) * 14;
@@ -392,7 +491,7 @@ function dibujar() {
         dibujarVectoresDebug();
     }
 
-    // 8. Animación de cartel de ¡GOL! con efecto rebote
+    // 8. Cartel de ¡GOL!
     if (mensajeGolTimer > 0) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
