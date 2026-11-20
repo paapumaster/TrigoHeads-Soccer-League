@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrigoHeads: Soccer League | Proyecto ABPro</title>
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+<body>
+    <header class="game-header">
+        <h1>⚽ TrigoHeads: Soccer League</h1>
+        <p class="subtitle">Motor Físico 2D: Trigonometría, Funciones y Matrices (60 FPS)</p>
+    </header>
+
+    <main class="game-container">
+        <!-- Marcador Superior -->
+        <div class="scoreboard">
+            <div class="team team-1">
+                <span class="badge blue">J1 (Chile)</span>
+                <span id="score1" class="score">0</span>
+            </div>
+            <div class="timer-box">
+                <span id="timer">01:30</span>
+                <small id="gameStatus">EN JUEGO</small>
+            </div>
+            <div class="team team-2">
+                <span id="score2" class="score">0</span>
+                <span class="badge red">J2 (Rival)</span>
+            </div>
+        </div>
+
+        <!-- Lienzo del Juego (900x500 px) -->
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="900" height="500"></canvas>
+        </div>
+
+        <!-- Panel de Telemetría Matemática en Tiempo Real -->
+        <section class="math-telemetry">
+            <div class="telemetry-header">
+                <h3>📐 Telemetría Matemática en Vivo</h3>
+                <button id="toggleDebugBtn" class="btn-debug">Vectores en Cancha (Tecla M): OFF</button>
+            </div>
+            <div class="telemetry-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Posición Balón (x, y)</span>
+                    <span id="ballPos" class="metric-value">(450, 250)</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Velocidad Vectorial (vx, vy)</span>
+                    <span id="ballVel" class="metric-value">(0.0, 0.0)</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Ángulo de Impacto (θ)</span>
+                    <span id="impactAngle" class="metric-value">0°</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Distancia Euclidiana J1 / J2</span>
+                    <span id="euclideanDist" class="metric-value">-- px / -- px</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Controles -->
+        <footer class="controls-bar">
+            <div><strong>Jugador 1:</strong> W (Saltar) | A / D (Mover) | Espacio (Patear)</div>
+            <div><strong>Jugador 2:</strong> ↑ (Saltar) | ← / → (Mover) | Enter (Patear)</div>
+            <div><strong>Extra:</strong> Tecla <b>M</b> (Vectores) | Tecla <b>R</b> (Reiniciar)</div>
+        </footer>
+    </main>
+
+    <!-- Módulos JavaScript en orden de dependencia -->
+    <script src="src/math.js"></script>
+    <script src="src/entities.js"></script>
+    <script src="src/game.js"></script>
+</body>
+</html>
