@@ -9,7 +9,6 @@
 <body>
     <header class="game-header">
         <h1>⚽ TrigoHeads: Soccer League</h1>
-      
     </header>
 
     <main class="game-container">
@@ -32,6 +31,7 @@
                 <span id="timer">01:30</span>
                 <small id="gameStatus">MENÚ</small>
                 <div class="header-btns">
+                    <button id="subMatchBtn" class="btn-mini" title="Cambiar jugador (Tecla C)">⇄ Cambios (0/2)</button>
                     <button id="pauseMatchBtn" class="btn-mini">⏸ Pausa / Salir</button>
                     <button id="openMenuBtn" class="btn-mini">☰ Menú</button>
                 </div>
@@ -89,7 +89,7 @@
                     </div>
                 </div>
 
-                <!-- PANTALLA 2: SELECCIÓN DE EQUIPO -->
+                <!-- PANTALLA 2: SELECCIÓN DE EQUIPO Y JUGADOR (4 POR EQUIPO) -->
                 <div id="screenTeams" class="arcade-screen">
                     <div class="ribbon-banner">Selección de equipo</div>
 
@@ -105,6 +105,11 @@
                                 </div>
                                 <button id="nextTeam1" class="arrow-btn" aria-label="Siguiente equipo J1">▶</button>
                             </div>
+                            <div class="player-picker">
+                                <button id="prevPlayer1" class="arrow-btn small-arrow" aria-label="Jugador anterior J1">◀</button>
+                                <span id="playerInfo1" class="player-choice-label">#7 Alexis</span>
+                                <button id="nextPlayer1" class="arrow-btn small-arrow" aria-label="Siguiente jugador J1">▶</button>
+                            </div>
                         </div>
 
                         <div class="vs-center">Vs</div>
@@ -119,6 +124,11 @@
                                     <small id="powerTag2" class="power-mini-tag">Onda Senoidal</small>
                                 </div>
                                 <button id="nextTeam2" class="arrow-btn" aria-label="Siguiente equipo J2">▶</button>
+                            </div>
+                            <div class="player-picker">
+                                <button id="prevPlayer2" class="arrow-btn small-arrow" aria-label="Jugador anterior J2">◀</button>
+                                <span id="playerInfo2" class="player-choice-label">#10 Messi</span>
+                                <button id="nextPlayer2" class="arrow-btn small-arrow" aria-label="Siguiente jugador J2">▶</button>
                             </div>
                         </div>
                     </div>
@@ -252,7 +262,7 @@
 
         <!-- Controles -->
         <footer class="controls-bar">
-            <div><strong>J1:</strong> W (Saltar) | A/D (Mover) | Espacio (Patear) | <b>S (Super Tiro)</b></div>
+            <div><strong>J1:</strong> W (Saltar) | A/D (Mover) | Espacio (Patear) | <b>S (Super Tiro)</b> | <b>C (Cambio)</b></div>
             <div><strong>J2:</strong> ↑ (Saltar) | ←/→ (Mover) | Enter (Patear) | <b>↓ (Super Tiro)</b></div>
             <div><strong>Sistema:</strong> <b>P / Esc</b> (Pausa) | <b>M</b> (Vectores)</div>
         </footer>

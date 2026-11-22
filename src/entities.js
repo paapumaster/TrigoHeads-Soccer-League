@@ -1,155 +1,199 @@
 /**
- * Módulo de Entidades, Selecciones y Matrices de Estado - TrigoHeads: Soccer League
+ * Entidades del Juego y Catálogo de Equipos (4 jugadores por equipo)
+ * TrigoHeads: Soccer League
  */
 
-// Matriz bidimensional [fila][columna] que define los límites geométricos de los arcos
+const FISICA = {
+    GRAVEDAD: 0.58,
+    FRICCION_SUELO: 0.84,
+    FRICCION_AIRE: 0.992,
+    SUELO_Y: 430
+};
+
 const MATRIZ_ARCOS = [
-    [0, 65, 310, 440],     // Fila 0: Arco Izquierdo (Defiende J1)
-    [835, 900, 310, 440]   // Fila 1: Arco Derecho (Defiende J2)
+    [20, 95, 290, FISICA.SUELO_Y],
+    [805, 880, 290, FISICA.SUELO_Y]
 ];
 
-// Matriz de estado del partido: [golesJ1, golesJ2, tiempoRestanteSeg, estadoPartido, golDeOro]
-// estadoPartido: 0 = en juego, 1 = finalizado, 2 = en menú selección
 const MATRIZ_MARCADOR = [0, 0, 90, 2, 0];
 
-// Catálogo de Selecciones Nacionales con su Poder Matemático asignado
 const CATALOGO_EQUIPOS = {
-    chile: {
+    CHILE: {
         nombre: "CHILE",
         bandera: "🇨🇱",
-        colorPrimario: "#dc2626",
-        colorSecundario: "#2563eb",
+        colorPrimario: "#ef4444",
+        colorSecundario: "#1d4ed8",
+        colorDetalle: "#f8fafc",
         colorTextoBadge: "#ffffff",
-        tipoPoder: "senoidal",
-        nombrePoder: "Onda Senoidal: y = y₀ + 55·sin(0.035x)"
+        tipoPoder: "bala",
+        plantilla: [
+            { nombre: "Alexis", dorsal: 7, estiloVisual: "cinta", bonoVelocidad: 0.3, bonoSalto: 0.2 },
+            { nombre: "Vargas", dorsal: 11, estiloVisual: "cresta", bonoVelocidad: 0.2, bonoSalto: 0.3 },
+            { nombre: "Vidal", dorsal: 8, estiloVisual: "cresta", bonoVelocidad: 0.1, bonoSalto: 0.35 },
+            { nombre: "Suazo", dorsal: 9, estiloVisual: "clasico", bonoVelocidad: 0.15, bonoSalto: 0.25 }
+        ]
     },
-    argentina: {
+    ARGENTINA: {
         nombre: "ARGENTINA",
         bandera: "🇦🇷",
         colorPrimario: "#38bdf8",
-        colorSecundario: "#ffffff",
+        colorSecundario: "#f8fafc",
+        colorDetalle: "#0284c7",
         colorTextoBadge: "#0f172a",
-        tipoPoder: "senoidal",
-        nombrePoder: "Onda Senoidal: y = y₀ + 55·sin(0.035x)"
+        tipoPoder: "bala",
+        plantilla: [
+            { nombre: "Messi", dorsal: 10, estiloVisual: "clasico", bonoVelocidad: 0.3, bonoSalto: 0.1 },
+            { nombre: "Julián", dorsal: 9, estiloVisual: "cinta", bonoVelocidad: 0.25, bonoSalto: 0.25 },
+            { nombre: "Dibu", dorsal: 23, estiloVisual: "visera", bonoVelocidad: -0.1, bonoSalto: 0.6 },
+            { nombre: "Di María", dorsal: 11, estiloVisual: "cresta", bonoVelocidad: 0.2, bonoSalto: 0.2 }
+        ]
     },
-    brasil: {
-        nombre: "BRASIL",
-        bandera: "🇧🇷",
-        colorPrimario: "#facc15",
-        colorSecundario: "#16a34a",
-        colorTextoBadge: "#0f172a",
-        tipoPoder: "senoidal",
-        nombrePoder: "Onda Senoidal: y = y₀ + 55·sin(0.035x)"
-    },
-    alemania: {
+    ALEMANIA: {
         nombre: "ALEMANIA",
         bandera: "🇩🇪",
         colorPrimario: "#f8fafc",
-        colorSecundario: "#1e293b",
+        colorSecundario: "#0f172a",
+        colorDetalle: "#ef4444",
         colorTextoBadge: "#0f172a",
         tipoPoder: "bala",
-        nombrePoder: "Tiro Bala Rectilíneo (g = 0, v = 22)"
+        plantilla: [
+            { nombre: "Müller", dorsal: 13, estiloVisual: "clasico", bonoVelocidad: 0.15, bonoSalto: 0.35 },
+            { nombre: "Musiala", dorsal: 10, estiloVisual: "cinta", bonoVelocidad: 0.35, bonoSalto: 0.2 },
+            { nombre: "Neuer", dorsal: 1, estiloVisual: "visera", bonoVelocidad: -0.05, bonoSalto: 0.55 },
+            { nombre: "Kimmich", dorsal: 6, estiloVisual: "cresta", bonoVelocidad: 0.2, bonoSalto: 0.25 }
+        ]
     },
-    japon: {
+    BRASIL: {
+        nombre: "BRASIL",
+        bandera: "🇧🇷",
+        colorPrimario: "#eab308",
+        colorSecundario: "#16a34a",
+        colorDetalle: "#15803d",
+        colorTextoBadge: "#0f172a",
+        tipoPoder: "senoidal",
+        plantilla: [
+            { nombre: "Vini Jr", dorsal: 7, estiloVisual: "cinta", bonoVelocidad: 0.25, bonoSalto: 0 },
+            { nombre: "Rodrygo", dorsal: 11, estiloVisual: "clasico", bonoVelocidad: 0.2, bonoSalto: 0.2 },
+            { nombre: "Richarlison", dorsal: 9, estiloVisual: "cresta", bonoVelocidad: 0, bonoSalto: 0.5 },
+            { nombre: "Neymar", dorsal: 10, estiloVisual: "visera", bonoVelocidad: 0.35, bonoSalto: 0.1 }
+        ]
+    },
+    JAPON: {
         nombre: "JAPÓN",
         bandera: "🇯🇵",
         colorPrimario: "#1d4ed8",
-        colorSecundario: "#ef4444",
+        colorSecundario: "#f8fafc",
+        colorDetalle: "#ef4444",
         colorTextoBadge: "#ffffff",
-        tipoPoder: "bala",
-        nombrePoder: "Tiro Bala Rectilíneo (g = 0, v = 22)"
+        tipoPoder: "senoidal",
+        plantilla: [
+            { nombre: "Kubo", dorsal: 20, estiloVisual: "cinta", bonoVelocidad: 0.3, bonoSalto: 0.2 },
+            { nombre: "Mitoma", dorsal: 7, estiloVisual: "cresta", bonoVelocidad: 0.35, bonoSalto: 0.15 },
+            { nombre: "Endo", dorsal: 6, estiloVisual: "clasico", bonoVelocidad: 0.15, bonoSalto: 0.35 },
+            { nombre: "Doan", dorsal: 10, estiloVisual: "visera", bonoVelocidad: 0.25, bonoSalto: 0.25 }
+        ]
+    },
+    FRANCIA: {
+        nombre: "FRANCIA",
+        bandera: "🇫🇷",
+        colorPrimario: "#2563eb",
+        colorSecundario: "#f8fafc",
+        colorDetalle: "#dc2626",
+        colorTextoBadge: "#ffffff",
+        tipoPoder: "senoidal",
+        plantilla: [
+            { nombre: "Mbappé", dorsal: 10, estiloVisual: "cinta", bonoVelocidad: 0.4, bonoSalto: 0.15 },
+            { nombre: "Griezmann", dorsal: 7, estiloVisual: "cresta", bonoVelocidad: 0.15, bonoSalto: 0.25 },
+            { nombre: "Giroud", dorsal: 9, estiloVisual: "clasico", bonoVelocidad: -0.05, bonoSalto: 0.5 },
+            { nombre: "Camavinga", dorsal: 6, estiloVisual: "visera", bonoVelocidad: 0.25, bonoSalto: 0.3 }
+        ]
     }
 };
 
-// Constantes físicas del entorno
-const FISICA = {
-    GRAVEDAD: 0.55,
-    SUELO_Y: 440,
-    FRICCION_SUELO: 0.85,
-    FRICCION_AIRE: 0.992,
-    REBOTE_BALON: 0.72
-};
+class Jugador {
+    constructor(id, xInicial, miradaInicial, equipoKey = "CHILE", idxJugador = 0) {
+        this.id = id;
+        this.xInicial = xInicial;
+        this.yInicial = FISICA.SUELO_Y - 34;
+        this.miradaInicial = miradaInicial;
 
-// Entidad Balón con soporte para Super Tiros y Estela (Trail)
-const balon = {
-    x: 450,
-    y: 200,
-    vx: 0,
-    vy: 0,
-    radio: 16,
-    anguloGiro: 0,
-    ultimoAnguloImpacto: 0,
-    historialPosiciones: [], // Matriz/cola de últimas 10 posiciones [x, y] para la estela
-    superTiroActivo: null,   // null | "senoidal" | "bala"
-    superTiroOrigenX: 0,
-    superTiroBaseY: 0,
-    superTiroDueno: 0,
+        this.radioCabeza = 34;
+        this.fuerzaSaltoBase = -12.8;
+        this.velocidadBase = 5.2;
 
-    reiniciar(direccionSaque = 0) {
-        this.x = 450;
-        this.y = 180;
-        this.vx = direccionSaque * 4;
-        this.vy = -2;
-        this.anguloGiro = 0;
-        this.historialPosiciones = [];
-        this.superTiroActivo = null;
+        this.energia = 0;
+        this.expresion = "normal";
+        this.timerExpresion = 0;
+
+        this.aplicarEquipo(equipoKey, idxJugador);
+        this.reiniciar();
     }
-};
 
-// Función constructora de Jugadores
-function crearJugador(id, xInicial, equipoKey, direccionMirada) {
-    const equipo = CATALOGO_EQUIPOS[equipoKey];
-    return {
-        id: id,
-        xInicial: xInicial,
-        x: xInicial,
-        y: FISICA.SUELO_Y - 32,
-        vx: 0,
-        vy: 0,
-        radioCabeza: 32,
-        velocidadMovimiento: 5.2,
-        fuerzaSalto: -12.5,
-        enSuelo: true,
-        equipoKey: equipoKey,
-        nombreEquipo: equipo.nombre,
-        colorCamiseta: equipo.colorPrimario,
-        colorDetalle: equipo.colorSecundario,
-        tipoPoder: equipo.tipoPoder,
-        nombrePoder: equipo.nombrePoder,
-        energia: 0, // 0 a 100%
-        mirada: direccionMirada,
-        pateando: false,
-        tiempoPatada: 0,
-        expresion: "normal", // "normal" | "enojado" | "sorpresa"
-        timerExpresion: 0,
+    aplicarEquipo(equipoKey, idxJugador = 0) {
+        this.equipoKey = equipoKey;
+        const eq = CATALOGO_EQUIPOS[equipoKey] || CATALOGO_EQUIPOS.CHILE;
+        this.nombreEquipo = eq.nombre;
+        this.colorCamiseta = eq.colorPrimario;
+        this.colorDetalle = eq.colorDetalle;
+        this.tipoPoder = eq.tipoPoder;
+        this.plantilla = eq.plantilla;
+        this.aplicarJugadorDePlantilla(idxJugador);
+    }
 
-        aplicarEquipo(nuevaKey) {
-            const eq = CATALOGO_EQUIPOS[nuevaKey];
-            this.equipoKey = nuevaKey;
-            this.nombreEquipo = eq.nombre;
-            this.colorCamiseta = eq.colorPrimario;
-            this.colorDetalle = eq.colorSecundario;
-            this.tipoPoder = eq.tipoPoder;
-            this.nombrePoder = eq.nombrePoder;
-        },
+    aplicarJugadorDePlantilla(idxJugador) {
+        const total = this.plantilla.length;
+        this.idxJugadorActual = ((idxJugador % total) + total) % total;
+        const miembro = this.plantilla[this.idxJugadorActual];
 
-        cargarEnergia(cantidad) {
-            this.energia = Math.min(100, this.energia + cantidad);
-        },
+        this.nombreJugador = miembro.nombre;
+        this.dorsal = miembro.dorsal;
+        this.estiloVisual = miembro.estiloVisual;
+        this.bonoVelocidad = miembro.bonoVelocidad || 0;
+        this.bonoSalto = miembro.bonoSalto || 0;
+        this.fuerzaSalto = this.fuerzaSaltoBase - this.bonoSalto;
+    }
 
-        reiniciar() {
-            this.x = this.xInicial;
-            this.y = FISICA.SUELO_Y - this.radioCabeza;
-            this.vx = 0;
-            this.vy = 0;
-            this.enSuelo = true;
-            this.pateando = false;
-            this.tiempoPatada = 0;
-            this.expresion = "normal";
-            this.timerExpresion = 0;
-        }
-    };
+    cargarEnergia(cantidad) {
+        this.energia = Math.min(100, Math.max(0, this.energia + cantidad));
+    }
+
+    reiniciar() {
+        this.x = this.xInicial;
+        this.y = this.yInicial;
+        this.vx = 0;
+        this.vy = 0;
+        this.mirada = this.miradaInicial;
+        this.enSuelo = true;
+        this.pateando = false;
+        this.tiempoPatada = 0;
+        this.expresion = "normal";
+        this.timerExpresion = 0;
+    }
 }
 
-const jugador1 = crearJugador(1, 180, "chile", 1);
-const jugador2 = crearJugador(2, 720, "argentina", -1);
+class Balon {
+    constructor(xInicial, yInicial) {
+        this.xInicial = xInicial;
+        this.yInicial = yInicial;
+        this.radio = 16;
+        this.reiniciar(0);
+    }
+
+    reiniciar(direccionSaque = 0) {
+        this.x = this.xInicial;
+        this.y = this.yInicial;
+        this.vx = direccionSaque * 2.5;
+        this.vy = -3.2;
+        this.anguloGiro = 0;
+        this.ultimoAnguloImpacto = 0;
+        this.superTiroActivo = null;
+        this.superTiroOrigenX = this.xInicial;
+        this.superTiroBaseY = this.yInicial;
+        this.superTiroDueno = null;
+        this.historialPosiciones = [];
+    }
+}
+
+const jugador1 = new Jugador(1, 230, 1, "CHILE", 0);
+const jugador2 = new Jugador(2, 670, -1, "ARGENTINA", 0);
+const balon = new Balon(450, 220);
